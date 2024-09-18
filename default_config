@@ -1,0 +1,6 @@
+# default_config
+
+MATLAB_PATH="/usr/local/MATLAB/R2021a/bin/matlab"
+LCMODEL_PATH="/usr/local/lcmodel/bin/lcmodel"
+BASIS_SET_PATH="/ceph/mri.meduniwien.ac.at/departments/radiology/mrsbrain/lab/Basis_Sets/GH_FID_Basis_2019/Version_1_1_1/fid_0.000000ms.basis"
+
