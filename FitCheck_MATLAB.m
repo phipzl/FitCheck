@@ -1,5 +1,6 @@
-%% A simulation model for MRS data that aims to evaluate the fitting accuracy of LCModel at different quality levels (SNR, FWHM, CRLB)
-
+%% FitCheck
+% A simulation model for MRS data that aims to evaluate the fitting 
+% accuracy of LCModel at different quality levels (SNR, FWHM, CRLB)
 
 %% 1. Initialize
 % Load default parameters
@@ -11,43 +12,19 @@ else
     run('default_parameters.m');
 end
 
+% Initialized dispstat
+dispstat('','init'); 
 
-% Define paths
-reload_data = 1;
-lab_dir = '/ceph/mri.meduniwien.ac.at/departments/radiology/mrsbrain/lab';
-sim_dir = 'Process_Results/Tumor_Patients/Meningioma_Paper_2024/Ala_GSH_Simulations'; 
-process_results_dir = fullfile(lab_dir, 'Process_Results/Tumor_Patients/Meningioma_Paper_2024/Results_v2/');
-output_dir = fullfile(lab_dir, 'Process_Results/Tumor_Patients/Meningioma_Paper_2024/FittingSimulationResults');
-batch_dir = fullfile(output_dir, 'BatchDir');
-lcmodel_program_path = '/usr/local/lcmodel/bin/lcmodel';
-%control_info_file = fullfile(sim_dir, 'ControlFiles/LCModel_Control_GH_2023_Meningeoma_new_v2.m');
-control_info_file = fullfile(sim_dir, 'ControlFiles/LCModel_Control_GH_2020_Pat_sMM_ForRevision.m');
-basis_sets_dir = fullfile(lab_dir, 'Basis_Sets/GH_FID_Basis_2019/jmrui');
-basis_set =      fullfile(lab_dir, 'Basis_Sets/GH_FID_Basis_2019/Version_1_1_1/fid_0.000000ms.basis');
-dispstat('','init'); % One time only initialization
-
+reload_data = 0;
 
 %% Add MATLAB functions to path (ExplonentialFilter, ...)
 if ~contains(path, '/ceph/mri.meduniwien.ac.at/departments/radiology/mrsbrain/lab/Sourcecode/MRSI_Processing_ReleaseVersions/Part1_Reco_LCModel_MUSICAL_Streamlined_Git/MatlabFunctions'); ... 
         addpath(genpath('/ceph/mri.meduniwien.ac.at/departments/radiology/mrsbrain/lab/Sourcecode/MRSI_Processing_ReleaseVersions/Part1_Reco_LCModel_MUSICAL_Streamlined_Git/MatlabFunctions')); ...
 end
 
-%% 2. Define metabolite files and names as well as tissue scaling factors
-metabolite_names = {
-    'NAA', 'NAAG', 'Cr', 'PCr', 'GPC', 'PCh', ... 
-    'Glu', 'Gln', 'Gly', 'Ins', 'GSH', 'Ala', ...
-    'Tau', 'Ser', 'Cys'
-};
-
-metabolite_files = {
-    'NAA_damp55.txt', 'NAAG.txt', 'Cr_Damp190.txt', 'PCr_Damp190.txt', 'GPC.txt', 'PCh.txt', ...
-    'glu.txt', 'Gln_Damp130.txt', 'glycine.txt', 'Ins.txt', 'GSH_Damp100.txt', 'Ala_fixed.txt', ...
-    'Tau.txt', 'Ser.txt', 'Cys.txt'
-};
-
 %% 3. Load Data from Files
 if reload_data == 1
-    num_metabolites = length(metabolite_files);
+    num_metabolites = length(met_files);
     metabolites = cell(1, num_metabolites);
     metabolite_signals_time = cell(1, num_metabolites);
     metabolite_signals_freq = cell(1, num_metabolites);
@@ -56,16 +33,16 @@ if reload_data == 1
     dispstat(sprintf('Import basis spectra...'),'keepthis','timestamp');
     % Import data and process each metabolite
     for i = 1:num_metabolites
-        dispstat(sprintf('%s', metabolite_names{i}));
+        dispstat(sprintf('%s', mets{i}));
 
         % Construct the file path
-        filepath = fullfile(basis_sets_dir, metabolite_files{i});
+        filepath = fullfile(basis_sets_dir, met_files{i});
 
         % Import the data from the file
         data = importdata(filepath);
 
         % Store the metabolite name
-        metabolites{i} = metabolite_names{i};
+        metabolites{i} = mets{i};
 
         % Extract and store the time-domain signal
         signal_timedomain = data.data(:,1) + 1j.*data.data(:,2);
@@ -86,105 +63,97 @@ end
 % freq_signal_matrix = cell2mat(metabolite_signals_freq.');
 
 
-%% 4. Set tissue scaling factors
-% Tissue scaling factors with six cases (low/mid/high Ala and low/mid/high GSH)
-tissue_scaling_factors = struct(...
-    'base', struct('NAA', 1000, 'NAAG', 0, 'Cr', 0, 'PCr', 0, 'GPC', 0, 'PCh', 0, ...
-                 'Glu', 0, 'Gln', 0, 'Gly', 0, 'Ins', 0, 'GSH', 0, 'Ala', 0, ...
-                 'Tau', 0, 'Ser', 0, 'Cys', 0), ...
-    'LL', struct('NAA', 90, 'NAAG', 30, 'Cr', 40, 'PCr', 20, 'GPC', 18, 'PCh', 7, ...
-                 'Glu', 25, 'Gln', 25, 'Gly', 5, 'Ins', 10, 'GSH', 10, 'Ala', 10, ...
-                 'Tau', 0, 'Ser', 0, 'Cys', 0), ...
-    'LM', struct('NAA', 90, 'NAAG', 30, 'Cr', 40, 'PCr', 20, 'GPC', 18, 'PCh', 7, ...
-                 'Glu', 25, 'Gln', 25, 'Gly', 5, 'Ins', 100, 'GSH', 10, 'Ala', 30, ...
-                 'Tau', 0, 'Ser', 0, 'Cys', 0), ...
-    'LH', struct('NAA', 90, 'NAAG', 30, 'Cr', 40, 'PCr', 20, 'GPC', 18, 'PCh', 7, ...
-                 'Glu', 25, 'Gln', 25, 'Gly', 5, 'Ins', 100, 'GSH', 10, 'Ala', 50, ...
-                 'Tau', 0, 'Ser', 0, 'Cys', 0), ...
-    'ML', struct('NAA', 90, 'NAAG', 30, 'Cr', 40, 'PCr', 20, 'GPC', 18, 'PCh', 7, ...
-                 'Glu', 25, 'Gln', 25, 'Gly', 5, 'Ins', 100, 'GSH', 30, 'Ala', 10, ...
-                 'Tau', 0, 'Ser', 0, 'Cys', 0), ...
-    'MM', struct('NAA', 90, 'NAAG', 30, 'Cr', 40, 'PCr', 20, 'GPC', 18, 'PCh', 7, ...
-                 'Glu', 25, 'Gln', 25, 'Gly', 5, 'Ins', 100, 'GSH', 30, 'Ala', 30, ...
-                 'Tau', 0, 'Ser', 0, 'Cys', 0), ...
-    'MH', struct('NAA', 90, 'NAAG', 30, 'Cr', 40, 'PCr', 20, 'GPC', 18, 'PCh', 7, ...
-                 'Glu', 25, 'Gln', 25, 'Gly', 5, 'Ins', 100, 'GSH', 30, 'Ala', 50, ...
-                 'Tau', 0, 'Ser', 0, 'Cys', 0), ...
-    'HL', struct('NAA', 90, 'NAAG', 30, 'Cr', 40, 'PCr', 20, 'GPC', 18, 'PCh', 7, ...
-                 'Glu', 25, 'Gln', 25, 'Gly', 5, 'Ins', 100, 'GSH', 50, 'Ala', 10, ...
-                 'Tau', 0, 'Ser', 0, 'Cys', 0), ...
-    'HM', struct('NAA', 90, 'NAAG', 30, 'Cr', 40, 'PCr', 20, 'GPC', 18, 'PCh', 7, ...
-                 'Glu', 25, 'Gln', 25, 'Gly', 5, 'Ins', 100, 'GSH', 50, 'Ala', 30, ...
-                 'Tau', 0, 'Ser', 0, 'Cys', 0), ...
-    'HH', struct('NAA', 90, 'NAAG', 30, 'Cr', 40, 'PCr', 20, 'GPC', 18, 'PCh', 7, ...
-                 'Glu', 25, 'Gln', 25, 'Gly', 5, 'Ins', 100, 'GSH', 50, 'Ala', 50, ...
-                 'Tau', 0, 'Ser', 0, 'Cys', 0) ...
-);
+%% 4. Set Tissue Scaling Factors
+% Metabolite coefficients are set in *_parameters.m
 
+% Generate all combinations of variable levels using ndgrid
+[level_grids{1:numel(mets_variable)}] = ndgrid(met_lvls_variable{:});
 
+% Flatten the grids into vectors
+for i = 1:numel(level_grids)
+    level_grids{i} = level_grids{i}(:);
+end
 
-%% 5. Loop over different noise/linewidth parameters and different tissue types
-% Define tissue types, noise and filter levels
-tissue_types = {'base'}; %{'LL', 'LM', 'LH', 'ML', 'MM', 'MH', 'HL', 'HM', 'HH'};
-noise_dbs = 60; % [ 10 20 30 ]; %4e3:4e3:12.2e4;
-% noise levels
-% 50: low noise
-% 55: okay, relatively low noise
-% 58: still okay
-% 59: SNR 14
-% 60: complete mess
-filter_levels = 1.0; %[ 0.5 1.0 1.5 2.0] % [ 0.8 1.0 1.2 ]; %1.0:0.2:6; % 3 is too high, 1 does almost nothing. 
-% filter levels
-% 1: does almost nothing
-% 2: looks okay
-% 2.5: wrong fits with low CRLBs, but spectrum looks ok
-% 3: completely broken
+% Combine levels into combinations
+lvls_combination = [level_grids{:}];
+num_combinations = size(lvls_combination, 1);
 
+% Preallocate tissue_scaling_factors with met_lvls_default fields
+tissue_scaling_factors = repmat(met_lvls_default, num_combinations, 1);
+tissue_comps = cell(num_combinations, 1);
 
+% Assign variable levels to each combination and generate tissue_comps
+for i = 1:num_combinations
+    % Assign variable levels directly to the preallocated structure
+    for m = 1:numel(mets_variable)
+        metabolite = mets_variable{m};
+        level_value = lvls_combination(i, m);
+        tissue_scaling_factors(i).(metabolite) = level_value;
+    end
+
+    % Generate tissue type name by inspecting tissue_scaling_factors
+    % We can create the name based on all metabolites that differ from default
+    name_parts = {};
+    for m = 1:numel(mets)
+        metabolite = mets{m};
+        default_value = met_lvls_default.(metabolite);
+        current_value = tissue_scaling_factors(i).(metabolite);
+        if ismember(metabolite,mets_variable) 
+            name_parts{end+1} = sprintf('%s%g', metabolite, current_value);
+        end
+    end
+
+    if isempty(name_parts) 
+        tissue_comps{i} = 'Default';
+    else
+        tissue_comps{i} = strjoin(name_parts, '_');
+    end
+end
+
+%% 5. Calculate parameters and preallocate InArray.csi
 % Initialize data structure for storing results
 num_noise_levels = length(noise_dbs);  
 num_filter_widths = length(filter_levels);  
 
-% Pre-calculate parameters for signal processing
-dursim = 1.092157;     % simulation duration
-durmeas = 0.3456;      % measurement duration
-
+% Determine original, truncated and zerofilled signal lengths
 siglen_orig = length(metabolite_signals_time{1});
 siglen_trun = round(durmeas / dursim * siglen_orig);
 siglen_new = 960;
-siglen_zf = 2 * siglen_new;  % Zero-filled length
+siglen_zf = 2 * siglen_new;  
 
-% Pre-allocate the InArray.csi for efficiency
-InArray.csi = zeros(num_noise_levels, num_filter_widths, length(tissue_types), siglen_zf);
+% InArray: Pre-allocate the field "csi" and add "DimNames"
+InArray.csi = zeros(num_noise_levels, num_filter_widths, length(tissue_comps), siglen_zf);
+InArray.DimNames = {'Noise', 'Linewidth', 'Composition', 'Spectrum'};
+
 %% 6. Model signals
 dispstat(sprintf('Creating CSI array.'),'keepthis','timestamp');
 
-% Loop over tissue types
-for tissue_index = 1:length(tissue_types)
-    tissue_type = tissue_types{tissue_index};
-    % Loop over noise levels
+% Pick a tissue composition
+for tissue_index = 1:length(tissue_comps)
+    tissue_comp = tissue_comps{tissue_index};
+
+    % Pick a noise levels
     noise_index = 0;
     for noise_db = noise_dbs
         noise_index = noise_index + 1;
-        
-        
-        % Loop over filter widths
+       
+        % Pick a filter widths
         filter_index = 0;        
-        for filter_width_in = filter_levels            
-            filter_width = exp(filter_width_in);
+        for filter_width_exp = filter_levels            
+            filter_width = exp(filter_width_exp);
             filter_index = filter_index + 1;
             
-            % Create summed signals using scaling factors
-            scalings = tissue_scaling_factors.(tissue_type);
-            signal = zeros(size(metabolite_signals_time{1}));  % Initialize with the correct size            
+            % Build up the signal as a linear combination of basis signals
+            scalings = tissue_scaling_factors(tissue_index);
+            signal = zeros(siglen_orig,1);
             for m = 1:num_metabolites
                 signal = signal + metabolite_signals_time{m} * scalings.(metabolites{m});
             end
                        
             % Truncate and undersample signal
             signal = signal(1:siglen_trun);
-            signal_uns = interp1(1:siglen_trun, signal, linspace(1, siglen_trun, siglen_new));
-            signal = signal_uns;
+            signal_us = interp1(1:siglen_trun, signal, linspace(1, siglen_trun, siglen_new));
+            signal = signal_us;
 
             % Filter
             [signal, filter] = ExponentialFilter(signal, 360003, filter_width, 2);
@@ -207,10 +176,10 @@ for tissue_index = 1:length(tissue_types)
             
             % Output information  
 %             fprintf('Voxel coordinates: % 3i % 3i % 3i. ', noise_index, filter_index, tissue_index);          
-%             fprintf('Noise dB: % 2i. Filter width: % 3i. Tissue: %s.\n', noise_db, filter_width, tissue_type);
+%             fprintf('Noise dB: % 2i. Filter width: % 3i. Tissue: %s.\n', noise_db, filter_width, tissue_comp);
 
             dispstat(sprintf('Voxel: [%2i %2i %2i], Noise db: % 2.3e, Filter width: % 3.3e, Tissue: %s', ...
-            noise_index, filter_index, tissue_index, noise_db, filter_width, tissue_type), 'keepthis');
+            noise_index, filter_index, tissue_index, noise_db, filter_width, tissue_comp), 'keepthis');
             
         end % linewidth loop
     end % noise loop
@@ -220,6 +189,9 @@ dispstat(sprintf('InArray.csi has been created!'), 'keepprev', 'timestamp');
 fprintf('Dimensions: %i x %i x %i x %i\n', size(InArray.csi))
 
 %% Debug
+
+spectrum = real(fft(squeeze(InArray.csi(1,1,1,:))));
+plot(spectrum);
 
 % Define colors (3 colors with 3 shades each)
 colors = {
@@ -231,8 +203,8 @@ colors = {
 figure; hold on;
 
 % Loop over noise and filter levels
-for i = 1:num_noise_levels
-    for j = 1:num_filter_widths
+for i = 1 %:num_noise_levels
+    for j = 1 %:num_filter_widths
         % Compute the index for color selection
         color_index = (i-1)*length(filter_levels) + j;
 
