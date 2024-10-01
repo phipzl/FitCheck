@@ -1,7 +1,7 @@
 % default_parameters.m
 
 %% General Settings
-MetaInforeload_data = 1;
+MetaInfo.reload_data = 0; % Set this to 1 to always reload the spectral data
 
 %% Paths
 Paths = struct();
@@ -21,7 +21,7 @@ MetaInfo.DimNames = {'X', 'Y', 'Z'};
 MetaInfo.Dimt1 = 4;
 MetaInfo.pat_name = 'My_Simulation';
 MetaInfo.LarmorFreq = 297.2232 * 1E6;  % [Hz]
-MetaInfo.dwelltime_seconds = 3.2E-4;                          % Dwell time in seconds
+MetaInfo.dwelltime_seconds = 3.4E-4;                          % Dwell time in seconds
 MetaInfo.dwelltime = MetaInfo.dwelltime_seconds * 1E9;        % [ns] for LCModel
 
 %% Metabolite Names and Basis Files
@@ -53,24 +53,31 @@ Metabolite.files = {
 %     0, 0, 0]; % Tau, Ser, Cys
 
 Metabolite.coefficients = [... 
-    90, 30, ... % NAA+NAAG
-    0,  0, ... % Cr+PCr
-    0,  0, ... % GPC+PCh
-    0,  0, ... % Glu, Gln
-    0,  0, ... % Gly, Ins
-    0,  0, ... % GSH, Ala
-    0,  0, 0]; % Tau, Ser, Cys
+    0,  0, ...  % NAA+NAAG
+    0,  0, ...  % Cr+PCr
+    0,  0, ...  % GPC+PCh
+    0,  0, ...  % Glu, Gln
+    0,  0, ...  % Gly, Ins
+    0,  0, ...  % GSH, Ala
+    0,  0, 0 ]; % Tau, Ser, Cys
 
 
 % Initialize Metabolite.coefficient_structure using 'Metabolite.names' and 'Metabolite.coefficients'
 Metabolite.coefficient_structure = cell2struct(num2cell(Metabolite.coefficients), Metabolite.names, 2);
 
 % Variable Levels
-Metabolite.variable_mets = {'Ala', 'GSH'};  % Metabolites to vary
+Metabolite.variable_mets = {'NAA', 'NAAG'};  % Metabolites to vary
 Metabolite.variable_met_levels = {
-    [10, 50];  % Levels for 'Ala'
-    [10, 50];  % Levels for 'GSH'
+    [0, 50];  % Levels for 'Ala'
+    [0, 10];  % Levels for 'GSH'
 };
+
+% % Variable Levels
+% Metabolite.variable_mets = {'Ala', 'GSH'};  % Metabolites to vary
+% Metabolite.variable_met_levels = {
+%     [0, 10];  % Levels for 'Ala'
+%     [0, 10];  % Levels for 'GSH'
+% };
 
 %% Tissue Types and Parameters
 % noise levels. 

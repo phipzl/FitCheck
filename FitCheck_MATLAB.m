@@ -17,9 +17,6 @@ else
     dispstat(sprintf('Default parameters loaded.'),'keepthis','timestamp');
 end
 
-% Load data
-MetaInfo.reload_data = 1;
-
 % Add MATLAB functions to path (ExplonentialFilter, ...)
 addpath(genpath('.'))
 % if ~contains(path, '/ceph/mri.meduniwien.ac.at/departments/radiology/mrsbrain/lab/Sourcecode/MRSI_Processing_ReleaseVersions/Part1_Reco_LCModel_MUSICAL_Streamlined_Git/MatlabFunctions'); ... 
@@ -27,7 +24,7 @@ addpath(genpath('.'))
 % end
 
 %% 3. Load Data from Files
-if MetaInfo.reload_data == 1
+if MetaInfo.reload_data == 1 || ~isfield(Metabolite, 'import') || ~isfield(Metabolite.import, 'data')
     Metabolite.number = length(Metabolite.files);
     % Metabolites = cell(1, Metabolite.number);
     Metabolite.signals_time = cell(1, Metabolite.number);
@@ -58,7 +55,7 @@ if MetaInfo.reload_data == 1
     end
     dispstat(sprintf('Basis spectra imported.'),'keepthis','timestamp');
 else
-    fprintf('Basis spectra were not loaded.\n');
+    fprintf('Basis spectra were not reloaded.\n');
 end
 
 % Optionally, convert cell arrays to matrices if all signals have the same length
@@ -168,7 +165,7 @@ for i_tissue = 1:length(Simulation.tissue_comps)
             
             % Add White Gaussian Noise 
             %noise = sqrt(10^noise_db)/sqrt(2) * randn(1, 960) + 1i * sqrt(10^noise_db)/sqrt(2) * randn(1, 960); % because wgn is undefined (noise = wgn(1, 960, noise_db);)
-            noise =wgn(1,960,noise_db);
+            noise = wgn(1,960,noise_db);
             %hold on; plot(noise)
             signal = signal + noise;
 
@@ -202,7 +199,7 @@ fprintf('Dimensions: %i x %i x %i x %i\n', size(InArray.csi))
 %% Debug
 % Define colors for 9 spectra using the 'lines' colormap
 % colors = lines(size(InArray.csi, 3));  % Returns a 9x3 matrix of RGB values
-colors = [ 1 0 0 ; 0.5 0 0; 0 0 0.5; 0 0 1 ];
+colors = [ 0 0 0 ; 1 0 0; 1 0.7 0.3 ; 0.5 0.5 0.5 ]; % Note: transposed!
 
 ppm_scale = flip(compute_chemshift_vector(MetaInfo.LarmorFreq,... 
     MetaInfo.dwelltime_seconds, size(InArray.csi, 4)));
@@ -214,7 +211,7 @@ for i = 1 %:Simulation.num_noise_levels
         for k = 1:size(InArray.csi, 3)
             % Calculate the FFT and plot the magnitude of the FFT result
             spectrum = abs(fft(squeeze(InArray.csi(i,j,k,:))));
-            plot(ppm_scale, spectrum, 'Color', colors((k-1)*3+(1:3)));
+            plot(ppm_scale, spectrum, 'Color', colors(k,:), 'LineWidth', 1); 
         end
 
         hold off;
