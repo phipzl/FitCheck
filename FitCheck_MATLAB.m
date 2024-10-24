@@ -36,16 +36,9 @@ if MetaInfo.reload_data == 1 || ~isfield(Metabolite, 'import') || ~isfield(Metab
     for i = 1:Metabolite.number
         dispstat(sprintf('%s', Metabolite.names{i}));
 
-        % Construct the file path
         Paths.filepath = fullfile(Paths.basis_sets_dir, Metabolite.files{i});
-
-        % Import the data from the file
         Metabolite.import = importdata(Paths.filepath);
 
-        % Store the Metabolite name
-        % Simulation.metabolites{i} = Metabolite.names{i};
-
-        % Extract and store the time-domain signal
         Metabolite.signal_time = Metabolite.import.data(:,1) + 1j.*Metabolite.import.data(:,2);
         Metabolite.signals_time{i} = Metabolite.signal_time;
 
@@ -124,7 +117,7 @@ Simulation.num_filter_widths = length(MetaInfo.filter_levels);
 % Determine original, truncated and zerofilled signal lengths
 Signal.OrigLength = length(Metabolite.signals_time{1});
 Signal.TruncatedLength = round(MetaInfo.MeasDuration / MetaInfo.SimDuration * Signal.OrigLength);
-Signal.NewLength = 960;
+Signal.NewLength = 1020;  % should be set by user
 Signal.ZFLength = 2 *  Signal.NewLength;  
 
 % InArray: Pre-allocate the field "csi" and add "DimNames"
@@ -158,6 +151,7 @@ for i_tissue = 1:length(Simulation.tissue_comps)
             % Truncate and undersample signal
             signal = signal(1:Signal.TruncatedLength);
             signal_us = interp1(1:Signal.TruncatedLength, signal, linspace(1, Signal.TruncatedLength,  Signal.NewLength));
+            % Update:
             signal = signal_us;
 
             % Filter
@@ -165,7 +159,7 @@ for i_tissue = 1:length(Simulation.tissue_comps)
             
             % Add White Gaussian Noise 
             %noise = sqrt(10^noise_db)/sqrt(2) * randn(1, 960) + 1i * sqrt(10^noise_db)/sqrt(2) * randn(1, 960); % because wgn is undefined (noise = wgn(1, 960, noise_db);)
-            noise = wgn(1,960,noise_db);
+            noise = wgn(1,Signal.NewLength,noise_db);
             %hold on; plot(noise)
             signal = signal + noise;
 
@@ -201,7 +195,7 @@ fprintf('Dimensions: %i x %i x %i x %i\n', size(InArray.csi))
 % colors = lines(size(InArray.csi, 3));  % Returns a 9x3 matrix of RGB values
 colors = [ 0 0 0 ; 1 0 0; 1 0.7 0.3 ; 0.5 0.5 0.5 ]; % Note: transposed!
 
-ppm_scale = flip(compute_chemshift_vector(MetaInfo.LarmorFreq,... 
+ppm_scale = (compute_chemshift_vector(MetaInfo.LarmorFreq,... 
     MetaInfo.dwelltime_seconds, size(InArray.csi, 4)));
 
 % Loop over noise and filter levels
@@ -210,7 +204,7 @@ for i = 1 %:Simulation.num_noise_levels
         figure; hold on;
         for k = 1:size(InArray.csi, 3)
             % Calculate the FFT and plot the magnitude of the FFT result
-            spectrum = abs(fft(squeeze(InArray.csi(i,j,k,:))));
+            spectrum = abs(fftshift(fft(squeeze(InArray.csi(i,j,k,:)))));
             plot(ppm_scale, spectrum, 'Color', colors(k,:), 'LineWidth', 1); 
         end
 
@@ -229,8 +223,8 @@ close all
 
 fprintf('##\n'); 
 fprintf('Dwell time in us: \t% 10.2f \t(should be around 300 us)    \n', MetaInfo.dwelltime_seconds*1E6);
-fprintf('Bandwidth in Hz:  \t% 10.2f \t(should be around 3000 Hz)   \n', bandwidth);
-fprintf('Bandwidth in PPM: \t% 10.2f \t(should be around 10 ppm)    \n', 1E6 * bandwidth/MetaInfo.LarmorFreq);
+% fprintf('Bandwidth in Hz:  \t% 10.2f \t(should be around 3000 Hz)   \n', bandwidth);
+% fprintf('Bandwidth in PPM: \t% 10.2f \t(should be around 10 ppm)    \n', 1E6 * bandwidth/MetaInfo.LarmorFreq);
 fprintf('Orig length is: \t% 10i \t    \n', Signal.OrigLength);
 fprintf('Truncated to: \t\t% 10i \t    \n', Signal.TruncatedLength);
 fprintf('Downsampled to: \t% 10i \t    \n',  Signal.NewLength);
@@ -240,8 +234,7 @@ fprintf('##\nInArray.csi dims: % 2i % 2i % 2i % 2i \t   \n##\n', size(InArray.cs
 
 
 
-delete(fullfile(batch_dir, '*'));
-
+delete(fullfile(Paths.batchdir, '*'));
 dispstat(sprintf('Writing LCModel files...'), 'keepprev', 'timestamp');
 Write_LCM_files(InArray,Paths,MetaInfo,Paths.ControlInfo,InArray.mask,MetaInfo.CPU_cores);
 dispstat(sprintf('Done.'), 'keepprev', 'timestamp');

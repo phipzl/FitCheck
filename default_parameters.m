@@ -1,7 +1,7 @@
 % default_parameters.m
 
 %% General Settings
-MetaInfo.reload_data = 0; % Set this to 1 to always reload the spectral data
+MetaInfo.reload_data = 1; % Set this to 1 to always reload the spectral data
 
 %% Paths
 Paths = struct();
@@ -9,11 +9,11 @@ Paths.lab_dir = '/ceph/mri.meduniwien.ac.at/departments/radiology/mrsbrain/lab';
 Paths.sim_dir = 'Process_Results/Tumor_Patients/Meningioma_Paper_2024/Ala_GSH_Simulations';
 Paths.process_results_dir = fullfile(Paths.lab_dir, 'Process_Results/Tumor_Patients/Meningioma_Paper_2024/Results_v2/');
 Paths.out_dir = fullfile(Paths.lab_dir, 'Process_Results/Tumor_Patients/Meningioma_Paper_2024/FittingSimulationResults');
-Paths.batch_dir = fullfile(Paths.out_dir, 'BatchDir');
+Paths.batchdir = fullfile(Paths.out_dir, 'BatchDir');
 Paths.LCM_ProgramPath = '/usr/local/lcmodel/bin/lcmodel';
 Paths.ControlInfo = fullfile(Paths.sim_dir, 'ControlFiles/LCModel_Control_GH_2020_Pat_sMM_ForRevision.m');
 Paths.basis_sets_dir = fullfile(Paths.lab_dir, 'Basis_Sets/GH_FID_Basis_2019/jmrui');
-Paths.basis_file = fullfile(Paths.lab_dir, 'Basis_Sets/GH_FID_Basis_2019/Version_1_1_1/fid_0.000000ms.basis');
+Paths.basis_file = {fullfile(Paths.lab_dir, 'Basis_Sets/GH_FID_Basis_2019/Version_1_1_1/fid_0.000000ms.basis')};
 
 %% Write_LCM_files parameters (incl. MetaInfo)
 
@@ -91,8 +91,8 @@ MetaInfo.noise_dbs = 0; % 59:0.25:60; %4e3:4e3:12.2e4;
 MetaInfo.filter_levels = 1; %1.5:0.5:2.5;
 
 %% Simulation Parameters
-MetaInfo.SimDuration  = 1.092157;     % Simulation duration
-MetaInfo.MeasDuration = 0.345600;     % Measurement duration
+MetaInfo.SimDuration  = 1.092157;     % dwt * (number of FID points - 1)
+MetaInfo.MeasDuration = 0.345600;     % ADC duration
 
 %% CPU Cores
 MetaInfo.CPU_cores = 1;
