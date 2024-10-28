@@ -48,7 +48,7 @@ if MetaInfo.reload_data == 1 || ~isfield(Metabolite, 'import') || ~isfield(Metab
     end
     dispstat(sprintf('Basis spectra imported.'),'keepthis','timestamp');
 else
-    fprintf('Basis spectra were not reloaded.\n');
+    dispstat(sprintf('Basis spectra were not reloaded.'),'keepthis','timestamp');
 end
 
 % Optionally, convert cell arrays to matrices if all signals have the same length
@@ -60,6 +60,7 @@ end
 %% 4. Set Tissue Scaling Factors
 % Simulation.metabolite coefficients are set in *_parameters.m
 dispstat(sprintf('Setting tissue scaling factors...'),'timestamp');
+clear Simulation % avoids mismatch issues when changing parameters for a second run
 
 % Generate all combinations of variable levels using ndgrid
 [Simulation.level_grids{1:numel(Metabolite.variable_mets)}] = ndgrid(Metabolite.variable_met_levels{:});
@@ -124,6 +125,39 @@ Signal.ZFLength = 2 *  Signal.NewLength;
 InArray.csi = zeros(Simulation.num_noise_levels, Simulation.num_filter_widths, length(Simulation.tissue_comps), Signal.ZFLength);
 InArray.DimNames = {'Noise', 'Linewidth', 'Composition', 'Spectrum'};
 
+% create info.txt in Paths.out_dir
+if exist(fullfile(Paths.out_dir, 'output.txt'), 'file')
+    delete(fullfile(Paths.out_dir, 'output.txt'));
+end
+fileid = fopen(fullfile(Paths.out_dir, 'output.txt'), 'w');
+
+% Write all parameters to the file
+fprintf(fileid, 'Parameters:\n');
+fprintf(fileid, 'OrigLength: %i\n', Signal.OrigLength);
+fprintf(fileid, 'TruncatedLength: %i\n', Signal.TruncatedLength);
+fprintf(fileid, 'NewLength: %i\n', Signal.NewLength);
+fprintf(fileid, 'ZFLength: %i\n', Signal.ZFLength);
+fprintf(fileid, 'Noise levels: %s\n', num2str(MetaInfo.noise_dbs));
+fprintf(fileid, 'Filter levels: %s\n', num2str(MetaInfo.filter_levels));
+fprintf(fileid, 'Tissue compositions: %s\n', strjoin(Simulation.tissue_comps, ', '));
+fprintf(fileid, 'Metabolites: %s\n', strjoin(Metabolite.names, ', '));
+% Write the Metabolite.coefficient_structure to file
+fprintf(fileid, '--------------------------------\n');
+fprintf(fileid, 'Metabolite base coefficients:\n');
+for i = 1:numel(Metabolite.names)
+    fprintf(fileid, '%s: %g\n', Metabolite.names{i}, Metabolite.coefficient_structure.(Metabolite.names{i}));
+end
+fprintf(fileid, '--------------------------------\n');
+% Now for variable metabolites
+    fprintf(fileid, 'Variable metabolites:\n');
+for i = 1:numel(Metabolite.variable_mets)
+    fprintf(fileid, '%s ', Metabolite.variable_mets{i});
+    fprintf(fileid, '%g ', Metabolite.variable_met_levels{i});
+    fprintf(fileid, '\n');
+end
+fprintf(fileid, '--------------------------------\n');
+fprintf(fileid, '\n');
+
 %% 6. Model signals
 
 % Pick a tissue composition
@@ -148,7 +182,7 @@ for i_tissue = 1:length(Simulation.tissue_comps)
                 signal = signal + Metabolite.signals_time{m} * scalings.(Metabolite.names{m});
             end
                        
-            % Truncate and undersample signal
+            % Truncate and undersample signal 
             signal = signal(1:Signal.TruncatedLength);
             signal_us = interp1(1:Signal.TruncatedLength, signal, linspace(1, Signal.TruncatedLength,  Signal.NewLength));
             % Update:
@@ -179,10 +213,17 @@ for i_tissue = 1:length(Simulation.tissue_comps)
 
             dispstat(sprintf('Voxel: [%2i %2i %2i], Noise db: % 2.3e, Filter width: % 3.3e, Tissue: %s', ...
             i_noise, filter_index, i_tissue, noise_db, filter_width, Simulation.tissue_comp), 'keepthis');
+
+            % Write the same info to a file
+            fprintf(fileid, 'Voxel: [%2i %2i %2i], Noise db: % 2.3e, Filter width: % 3.3e, Tissue: %s\n', ...
+            i_noise, filter_index, i_tissue, noise_db, filter_width, Simulation.tissue_comp);
             
         end % linewidth loop
     end % noise loop
 end % tissue loop
+
+% Close the file
+fclose(fileid);
 
 % Create mask for Write_LCM_files.
 InArray.mask = ones(size(InArray.csi,1), size(InArray.csi,2), size(InArray.csi,3));   
@@ -193,7 +234,7 @@ fprintf('Dimensions: %i x %i x %i x %i\n', size(InArray.csi))
 %% Debug
 % Define colors for 9 spectra using the 'lines' colormap
 % colors = lines(size(InArray.csi, 3));  % Returns a 9x3 matrix of RGB values
-colors = [ 0 0 0 ; 1 0 0; 1 0.7 0.3 ; 0.5 0.5 0.5 ]; % Note: transposed!
+colors = [ 0 0 1 ; 0.3 0.7 1 ; 1 0 0; 1 0.7 0.3 ]; % Note: transposed!
 
 ppm_scale = (compute_chemshift_vector(MetaInfo.LarmorFreq,... 
     MetaInfo.dwelltime_seconds, size(InArray.csi, 4)));
