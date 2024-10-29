@@ -62,6 +62,13 @@ end
 dispstat(sprintf('Setting tissue scaling factors...'),'timestamp');
 clear Simulation % avoids mismatch issues when changing parameters for a second run
 
+% If Metabolite.variable_mets is undefined, set the first Metabolite as variable and just use the default value
+if ~exist('Metabolite.variable_mets', 'var')
+    Metabolite.variable_mets = Metabolite.names(1);
+    Metabolite.variable_met_levels = {Metabolite.coefficient_structure.(Metabolite.variable_mets{1})};
+    dispstat(sprintf('Variable metabolites not defined. Using %s as variable.', Metabolite.variable_mets{1}),'keepthis','timestamp');
+end
+
 % Generate all combinations of variable levels using ndgrid
 [Simulation.level_grids{1:numel(Metabolite.variable_mets)}] = ndgrid(Metabolite.variable_met_levels{:});
 
@@ -232,32 +239,32 @@ dispstat(sprintf('InArray.csi has been created!'), 'keepprev', 'timestamp');
 fprintf('Dimensions: %i x %i x %i x %i\n', size(InArray.csi))
 
 %% Debug
-% Define colors for 9 spectra using the 'lines' colormap
-% colors = lines(size(InArray.csi, 3));  % Returns a 9x3 matrix of RGB values
-colors = [ 0 0 1 ; 0.3 0.7 1 ; 1 0 0; 1 0.7 0.3 ]; % Note: transposed!
-
-ppm_scale = (compute_chemshift_vector(MetaInfo.LarmorFreq,... 
-    MetaInfo.dwelltime_seconds, size(InArray.csi, 4)));
-
-% Loop over noise and filter levels
-for i = 1 %:Simulation.num_noise_levels
-    for j = 1 %:Simulation.num_filter_widths
-        figure; hold on;
-        for k = 1:size(InArray.csi, 3)
-            % Calculate the FFT and plot the magnitude of the FFT result
-            spectrum = abs(fftshift(fft(squeeze(InArray.csi(i,j,k,:)))));
-            plot(ppm_scale, spectrum, 'Color', colors(k,:), 'LineWidth', 1); 
-        end
-
-        hold off;
-        set(gca, 'XDir', 'reverse');
-        xlabel('ppm'); ylabel('Magnitude');
-        title('Spectra of InArray.csi');
-        
-        % Use Simulation.tissue_comps directly as legend entries
-        legend(Simulation.tissue_comps, 'Interpreter', 'none');
-    end
-end
+% % Define colors for 9 spectra using the 'lines' colormap
+% % colors = lines(size(InArray.csi, 3));  % Returns a 9x3 matrix of RGB values
+% colors = [ 0 0 1 ; 0.3 0.7 1 ; 1 0 0; 1 0.7 0.3 ]; % Note: transposed!
+% 
+% ppm_scale = (compute_chemshift_vector(MetaInfo.LarmorFreq,... 
+%     MetaInfo.dwelltime_seconds, size(InArray.csi, 4)));
+% 
+% % Loop over noise and filter levels
+% for i = 1 %:Simulation.num_noise_levels
+%     for j = 1 %:Simulation.num_filter_widths
+%         figure; hold on;
+%         for k = 1:size(InArray.csi, 3)
+%             % Calculate the FFT and plot the magnitude of the FFT result
+%             spectrum = abs(fftshift(fft(squeeze(InArray.csi(i,j,k,:)))));
+%             plot(ppm_scale, spectrum, 'Color', colors(k,:), 'LineWidth', 1); 
+%         end
+% 
+%         hold off;
+%         set(gca, 'XDir', 'reverse');
+%         xlabel('ppm'); ylabel('Magnitude');
+%         title('Spectra of InArray.csi');
+% 
+%         % Use Simulation.tissue_comps directly as legend entries
+%         legend(Simulation.tissue_comps, 'Interpreter', 'none');
+%     end
+% end
 
 %% 7. Write LCM Files
 close all
