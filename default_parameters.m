@@ -6,7 +6,7 @@ MetaInfo.reload_data = 0; % Set this to 1 to always reload the spectral data
 %% Paths
 Paths = struct();
 Paths.lab_dir = '/ceph/mri.meduniwien.ac.at/departments/radiology/mrsbrain/lab';
-Paths.sim_dir = '/ceph/mri.meduniwien.ac.at/departments/radiology/mrsbrain/lab/Sourcecode/LCM_FitCheck';
+Paths.sim_dir = '/ceph/mri.meduniwien.ac.at/departments/radiology/mrsbrain/lab/Sourcecode/FitCheck';
 Paths.process_results_dir = fullfile(Paths.lab_dir, 'Process_Results/Tumor_Patients/Meningioma_Paper_2024/Results_v2/');
 Paths.out_dir = fullfile(Paths.lab_dir, 'Process_Results/Tumor_Patients/Meningioma_Paper_2024/FittingSimulationResults');
 Paths.batchdir = fullfile(Paths.out_dir, 'BatchDir');
@@ -72,10 +72,10 @@ Metabolite.coefficients = Metabolite.coefficients_WM;
 Metabolite.coefficient_structure = cell2struct(num2cell(Metabolite.coefficients), Metabolite.names, 2);
 
 % Variable Levels
-% Metabolite.variable_mets = {'Gln'};  % Metabolites to vary
-% Metabolite.variable_met_levels = {
-%     [1.5, 2, 2.5, 3];  
-% };
+Metabolite.variable_mets = {'Gln'};  % Metabolites to vary
+Metabolite.variable_met_levels = {
+    [1.5, 2.5, 3.5];  
+};
 
 % % Variable Levels
 % Metabolite.variable_mets = {'Ala', 'GSH'};  % Metabolites to vary
@@ -92,8 +92,8 @@ Metabolite.coefficient_structure = cell2struct(num2cell(Metabolite.coefficients)
 % 1: does almost nothing, % 2: looks okay
 % 2.5: wrong fits with low CRLBs, but spectrum looks ok
 % 3: completely broken
-MetaInfo.noise_dbs = 0; % 59:0.25:60; %4e3:4e3:12.2e4;
-MetaInfo.filter_levels = 1; %1.5:0.5:2.5;
+MetaInfo.noise_dbs = 0:1:3; % 59:0.25:60; %4e3:4e3:12.2e4;
+MetaInfo.filter_levels = 1:1:4; %1.5:0.5:2.5;
 
 %% CPU Cores
 MetaInfo.CPU_cores = 4;

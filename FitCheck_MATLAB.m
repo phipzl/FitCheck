@@ -63,11 +63,12 @@ dispstat(sprintf('Setting tissue scaling factors...'),'timestamp');
 clear Simulation % avoids mismatch issues when changing parameters for a second run
 
 % If Metabolite.variable_mets is undefined, set the first Metabolite as variable and just use the default value
-if ~exist('Metabolite.variable_mets', 'var')
+if ~isfield(Metabolite, 'variable_mets') || isempty(Metabolite.variable_mets)
     Metabolite.variable_mets = Metabolite.names(1);
     Metabolite.variable_met_levels = {Metabolite.coefficient_structure.(Metabolite.variable_mets{1})};
-    dispstat(sprintf('Variable metabolites not defined. Using %s as variable.', Metabolite.variable_mets{1}),'keepthis','timestamp');
+    dispstat(sprintf('Variable metabolites not defined or empty. Using %s as variable.', Metabolite.variable_mets{1}), 'keepthis', 'timestamp');
 end
+
 
 % Generate all combinations of variable levels using ndgrid
 [Simulation.level_grids{1:numel(Metabolite.variable_mets)}] = ndgrid(Metabolite.variable_met_levels{:});
