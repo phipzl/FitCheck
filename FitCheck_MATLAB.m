@@ -3,6 +3,8 @@
 % accuracy of LCModel at different quality levels (SNR, FWHM, CRLB)
 
 %% 1. Initialize
+% Add MATLAB functions to path (ExplonentialFilter, ...)
+addpath(genpath('.'))
 % Initialized dispstat
 dispstat('','init'); 
 
@@ -17,8 +19,7 @@ else
     dispstat(sprintf('Default parameters loaded.'),'keepthis','timestamp');
 end
 
-% Add MATLAB functions to path (ExplonentialFilter, ...)
-addpath(genpath('.'))
+
 % if ~contains(path, '/ceph/mri.meduniwien.ac.at/departments/radiology/mrsbrain/lab/Sourcecode/MRSI_Processing_ReleaseVersions/Part1_Reco_LCModel_MUSICAL_Streamlined_Git/MatlabFunctions'); ... 
 %         addpath(genpath('/ceph/mri.meduniwien.ac.at/departments/radiology/mrsbrain/lab/Sourcecode/MRSI_Processing_ReleaseVersions/Part1_Reco_LCModel_MUSICAL_Streamlined_Git/MatlabFunctions')); ...
 % end
