@@ -11,7 +11,8 @@ Paths.process_results_dir = fullfile(Paths.lab_dir, 'Process_Results/Tumor_Patie
 Paths.out_dir = fullfile(Paths.lab_dir, 'Process_Results/Tumor_Patients/Meningioma_Paper_2024/FittingSimulationResults');
 Paths.batchdir = fullfile(Paths.out_dir, 'BatchDir');
 Paths.LCM_ProgramPath = '/usr/local/lcmodel/bin/lcmodel';
-Paths.ControlInfo = fullfile(Paths.sim_dir, 'ControlFiles/LCModel_Control_GH_2020_Pat_sMM_ForRevision.m');
+%Paths.ControlInfo = fullfile(Paths.sim_dir, 'ControlFiles/LCModel_Control_GH_2020_Pat_sMM_ForRevision.m');
+Paths.ControlInfo = fullfile(Paths.sim_dir, 'ControlFiles/LCModel_Control_PL_2024_ISMRM.m');
 Paths.basis_sets_dir = fullfile(Paths.sim_dir, 'BasisSet1.3ms');
 Paths.basis_file = {fullfile(Paths.lab_dir, 'Basis_Sets/GH_FID_Basis_2019/Version_1_1_1/fid_0.000000ms.basis')};
 
@@ -72,9 +73,9 @@ Metabolite.coefficients = Metabolite.coefficients_WM;
 Metabolite.coefficient_structure = cell2struct(num2cell(Metabolite.coefficients), Metabolite.names, 2);
 
 % Variable Levels
-Metabolite.variable_mets = {'Gln'};  % Metabolites to vary
+Metabolite.variable_mets = {'Gln','Gly','Ala'};  % Metabolites to vary
 Metabolite.variable_met_levels = {
-    [1.5, 2.5, 3.5];  
+    [2.0 2.5 3.0];  
 };
 
 % % Variable Levels
@@ -92,9 +93,9 @@ Metabolite.variable_met_levels = {
 % 1: does almost nothing, % 2: looks okay
 % 2.5: wrong fits with low CRLBs, but spectrum looks ok
 % 3: completely broken
-MetaInfo.noise_dbs = 0:1:3; % 59:0.25:60; %4e3:4e3:12.2e4;
-MetaInfo.filter_levels = 1:1:4; %1.5:0.5:2.5;
+MetaInfo.noise_dbs = 25:2:43; % 59:0.25:60; %4e3:4e3:12.2e4;
+MetaInfo.filter_levels = 1:1:10; %1:1:15; %1.5:0.5:2.5;
 
 %% CPU Cores
-MetaInfo.CPU_cores = 4;
+MetaInfo.CPU_cores = 8; % Does not work here (yet)!
 

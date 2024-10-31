@@ -72,7 +72,7 @@ ControlWrite.CHOMIT =  {'CHOMIT(1) = ''Cho''','CHOMIT(2) = ''Act''','CHOMIT(3) =
 
 % This is a little bit of a hack, since it has in principle nothing to do in this file
 % But it works!
-CPU_cores = 1;
+CPU_cores = 40;
 
 
 
@@ -85,5 +85,5 @@ CPU_cores = 1;
 
 % Controls for creating different files
 ControlWrite.LTABLE =  'LTABLE = 7';         % Create a .table file
-ControlWrite.LCSV =  'LCSV = 8';             % Don't create a .CSV file 
+ControlWrite.LCSV =  'LCSV = 0';             % Don't create a .CSV file 
 ControlWrite.LCOORD =  'LCOORD = 9';         % Create a Coord file

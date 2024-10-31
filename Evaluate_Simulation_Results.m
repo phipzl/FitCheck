@@ -1,11 +1,26 @@
 % function [MetData_relevant_amp MetData_relevant_sd] = Evaluate_Simulation_Results(out_dir, matrix_size)
 % MetMaps is a 4D array (noise values x line width x tissue type x metabolite)
 
-
-matrix_size = [4 4 3]; % noise levels, line widths, tissue types
-out_dir =['/ceph/mri.meduniwien.ac.at/departments/radiology/mrsbrain/lab/Process_Results/Tumor_Patients/Meningioma_Paper_2024/FittingSimulationResults/Run_20241030_a'];
-
+out_dir =['/ceph/mri.meduniwien.ac.at/departments/radiology/mrsbrain/lab/Process_Results/Tumor_Patients/Meningioma_Paper_2024/FittingSimulationResults'];
 file_prefix = 'My_Simulation';
+
+%% Extracting matrix_size from file name: 
+% List all .table files in the directory and sort them in descending order
+table_files = dir(fullfile(out_dir, '*.table'));
+
+[~, idx] = sort({table_files.name});  % Sort in ascending order
+sorted_files = table_files(flip(idx));  % Flip to get descending order
+
+% Extract numbers from the first (largest) filename
+file_name = sorted_files(1).name;
+tokens = regexp(file_name, 'X(\d+)_Y(\d+)_Z(\d+)', 'tokens');
+
+if ~isempty(tokens)
+    matrix_size = [str2double(tokens{1}{1}), str2double(tokens{1}{2}), str2double(tokens{1}{3})];
+else
+    error('Could not extract X, Y, Z values from the filename.');
+end
+
 mask = ones(matrix_size);     
 
 
@@ -79,7 +94,7 @@ if(no_met == 0)      % if no table with some metabolites was found, quit
 end
             
 MetData_sd_title = MetData_amp_title;
-MetData_extra_title = MetData_amp_title;
+MetData_extra_title = [ {'FWHM'}; {'SNR'}; {'shift'}; {'0_pha'}; {'1_pha'}];
 %% 5. READ METABOLITE DATA OF ALL TABLES
 
 %preallocate memory for data
@@ -187,27 +202,21 @@ end
 % no_met mask mask_res CRLB_treshold_value LogMat_FWHM LogMat_SNR LogMat_combined MetData_amp_test vecSize print_individual_spectra_flag ...
 % LarmorFreq dwelltime
 
-
-%% Only Glu, Gln, Ins and Gly are relevant:
-
-target_metabolites = ["Glu", "Gln", "Gly", "Ins"];
-[~, met_indices] = ismember(target_metabolites, string(MetData_amp_title));
-
-if any(met_indices == 0)
-    error('Some target metabolites were not found in MetData_amp_title.');
-end
-
-% Extract relevant data for these metabolites
-MetData_relevant_amp = MetData_amp(:,:,:,met_indices);
-MetData_relevant_sd = MetData_sd(:,:,:,met_indices);
-MetData_relevant_title = MetData_amp_title(met_indices);
+%% Extract and organize data per tissue type and metabolite
+% Initialize cell arrays for each metabolite
+% MetData_norm = cell(4, 1); % Normalized data for each metabolite
+% MetData_abs = cell(4, 1);  % Absolute data for each metabolite
+% 
+% for met = 1:4
+%     MetData_norm{met} = squeeze(MetData_norm_amp(:, :, :, met));
+%     MetData_abs{met} = squeeze(MetData_abs_amp(:, :, :, met));
+% end
 
 %% Normalize to reference
 % What is the reference? -> noise_db of ~40, filter width of ~300
 % This corresponds to: N = 4, L = 4.
 Nref=1; Lref=1;
-reference_matrix = squeeze(MetData_relevant_amp(Nref,Lref,:,:));    % first dim: tissue type. second dim: metabolite.
-
+reference_matrix = squeeze(MetData_amp(Nref,Lref,:,:));    % first dim: tissue type. second dim: metabolite.
 reference_tensor = repmat(reference_matrix, [1 1 matrix_size(1) matrix_size(2)]);
 reference_tensor = permute(reference_tensor, [3 4 1 2]);            
 % Explanation: 
@@ -217,79 +226,93 @@ reference_tensor = permute(reference_tensor, [3 4 1 2]);
 % Dim4: 4 metabolites (-> different reference values!)
 
 % Normalize amplitudes
-MetData_relevant_norm_amp = (MetData_relevant_amp - reference_tensor) ./ reference_tensor;
-MetData_relevant_abs_amp = abs(MetData_relevant_amp - reference_tensor);
+MetData_norm_amp = (MetData_amp - reference_tensor) ./ reference_tensor;
+MetData_abs_amp = abs(MetData_amp - reference_tensor);
 
-%% Extract and organize data per tissue type and metabolite
-% Initialize cell arrays for each metabolite
-MetData_norm = cell(4, 1); % Normalized data for each metabolite
-MetData_abs = cell(4, 1);  % Absolute data for each metabolite
 
-for met = 1:4
-    MetData_norm{met} = squeeze(MetData_relevant_norm_amp(:, :, :, met));
-    MetData_abs{met} = squeeze(MetData_relevant_abs_amp(:, :, :, met));
+%% Define most interessting metabolites
+
+target_metabolites = ["Glu", "Gln", "Gly", "Ins"];
+[~, met_indices] = ismember(target_metabolites, string(MetData_amp_title));
+
+if any(met_indices == 0)
+    error('Some target metabolites were not found in MetData_amp_title.');
 end
 
-%% Extract SNR and line width (LW) values for each tissue type
-SNR = squeeze(MetData_extra(:, :, :, 2));
-LW = squeeze(MetData_extra(:, :, :, 1));
 
+
+%% Extract SNR and line width (LW) values for each tissue type
+LW = squeeze(MetData_extra(:, :, :, 1));
+SNR = squeeze(MetData_extra(:, :, :, 2));
 
 %% Check: Comparing Cases. Mets: Glu (r), Gln (g), Ins (b), Gly (c). 
+% 
+% noisel = 1;
+% linewi = 1;
+% 
+% figure; hold on;
+% plot(squeeze(MetData_amp(:, linewi, 1, 1)), 'r', 'DisplayName', MetData_title{1});
+% plot(squeeze(MetData_amp(:, linewi, 1, 2)), 'g', 'DisplayName', MetData_title{2});
+% plot(squeeze(MetData_amp(:, linewi, 1, 3)), 'b', 'DisplayName', MetData_title{3});
+% plot(squeeze(MetData_amp(:, linewi, 1, 4)), 'c', 'DisplayName', MetData_title{4});
+% 
+% xlabel('Noise Level');
+% ylabel('Amplitude');
+% title(sprintf('Metabolite Fit Stability Against Noise (LW: %d)', linewi));
+% 
+% legend show; % Display the legend with metabolite titles and colors
+% hold off;
 
-noisel = 1;
-linewi = 1;
-
-figure; hold on;
-plot(squeeze(MetData_relevant_amp(noisel, linewi, :, 1)), 'r', 'DisplayName', MetData_relevant_title{1});
-plot(squeeze(MetData_relevant_amp(noisel, linewi, :, 2)), 'g', 'DisplayName', MetData_relevant_title{2});
-plot(squeeze(MetData_relevant_amp(noisel, linewi, :, 3)), 'b', 'DisplayName', MetData_relevant_title{3});
-plot(squeeze(MetData_relevant_amp(noisel, linewi, :, 4)), 'c', 'DisplayName', MetData_relevant_title{4});
-
-xlabel('Tissue Type');
-ylabel('Amplitude');
-title(sprintf('Metabolite Fits (Noise Level %d, Line Width Level %d)', noisel, linewi));
-
-legend show; % Display the legend with metabolite titles and colors
-hold off;
 
 %% Visualization
 close all
 
-% Select tissue type and metabolite for plotting (e.g., z = 1, a = 1)
+% Select tissue type for plotting (e.g., z = 1)
 tissue_idx = 1;
-metabolite_idx = 6;
 
-% Extract the relevant 2D slice of MetData_amp
-data_slice = MetData_amp(:,:,tissue_idx,metabolite_idx);
+% Extract the corresponding SNR and LW values from MetData_extra
+SNR_vals = MetData_extra(:,:,tissue_idx, 2);  % 3D tensor for SNR
+LW_vals = MetData_extra(:,:,tissue_idx, 1);   % 3D tensor for LW (FWHM)
 
-% Generate the X (LW) and Y (SNR) axis data based on matrix_size
-[LW, SNR] = meshgrid(1:matrix_size(2), 1:matrix_size(1));
+% Flatten SNR and LW values
+SNR_flat = SNR_vals(:);
+LW_flat = LW_vals(:);
 
-% Flatten the data for plotting
-LW_flat = LW(:);
-SNR_flat = SNR(:);
-data_flat = data_slice(:);
+% Calculate and display SNR and LW statistics (independent of metabolite)
+SNR_stats = [min(SNR_flat), mean(SNR_flat), median(SNR_flat), max(SNR_flat), numel(unique(SNR_flat))];
+LW_stats = [min(LW_flat), mean(LW_flat), median(LW_flat), max(LW_flat), numel(unique(LW_flat))];
 
-% Create a scatter plot with color-coded MetData_amp values
-figure;
-scatter(LW_flat, SNR_flat, 60, data_flat, 'filled'); % 60 is the point size
+fprintf('');
+fprintf('SNR: Min = %2.2f, Mean = %2.2f, Median = %2.2f, Max = %2.2f, Unique values = %d\n', SNR_stats);
+fprintf('LW:  Min = %2.2f, Mean = %2.2f, Median = %2.2f, Max = %2.2f, Unique values = %d\n', LW_stats);
 
-% Color bar to represent the value scale
-colorbar;
-caxis([min(data_flat), max(data_flat)]);
-colormap(jet);
+% Loop through each metabolite for plotting
+for metabolite_idx = met_indices 
+    % Extract the relevant 2D slice of MetData_amp for the selected tissue and metabolite
+    data_slice = MetData_norm_amp(:,:,tissue_idx,metabolite_idx);
+    
+    % Flatten data for plotting
+    data_flat = data_slice(:);
+    
+    % Create a scatter plot with color-coded MetData_amp values
+    figure;
+    scatter(LW_flat, SNR_flat, 60, data_flat, 'filled'); % 60 is the point size
+    
+    % Color bar to represent the value scale
+    colorbar;
+    caxis([min(data_flat), max(data_flat)]);
+    colormap(jet);
+    
+    % Axis labels and title
+    xlabel('Line Width (LW)');
+    ylabel('Signal-to-Noise Ratio (SNR)');
+    title(sprintf('Stability of Metabolic Fit for %s', MetData_amp_title{metabolite_idx}));
+    
+    % Enhance plot appearance
+    grid on;
+    set(gca, 'FontSize', 12);
 
-% Axis labels and title
-xlabel('Line Width (LW)');
-ylabel('Signal-to-Noise Ratio (SNR)');
-title(sprintf('Stability of MetData_amp for Tissue %d, Metabolite %d', tissue_idx, metabolite_idx));
-
-% Enhance plot appearance
-grid on;
-set(gca, 'FontSize', 12);
-
-
+end
 
 %% Write Met Data to Files
 
