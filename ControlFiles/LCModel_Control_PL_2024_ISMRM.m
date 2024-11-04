@@ -25,7 +25,7 @@ ControlWrite.DKNTMN = 'DKNTMN = 0.15';  			            % This forces a very flat
 %ControlWrite.PPMEND = 'PPMEND = 1.8';
 
 
-ControlWrite.PPMST = 'PPMST = 4.2';                              % Fit data in chemical shift region [PPMEND, PPMST], PPMST > PPMEND
+ControlWrite.PPMST = 'PPMST = 4.0';                              % Fit data in chemical shift region [PPMEND, PPMST], PPMST > PPMEND
 ControlWrite.PPMEND = 'PPMEND = 1.8';
 %ControlWrite.PPMGAP = {'PPMGAP(1,1)=1.8', 'PPMGAP(2,1)=1.2 '};
 

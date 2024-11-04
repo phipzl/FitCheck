@@ -73,9 +73,10 @@ Metabolite.coefficients = Metabolite.coefficients_WM;
 Metabolite.coefficient_structure = cell2struct(num2cell(Metabolite.coefficients), Metabolite.names, 2);
 
 % Variable Levels
-Metabolite.variable_mets = {'Gln','Gly','Ala'};  % Metabolites to vary
+Metabolite.variable_mets = {'Gln','Gly'};  % Metabolites to vary
 Metabolite.variable_met_levels = {
-    [2.0 2.5 3.0];  
+    [2.5 2.75];
+    [3.5 3.85]
 };
 
 % % Variable Levels
@@ -85,17 +86,9 @@ Metabolite.variable_met_levels = {
 %     [0, 10];  % Levels for 'GSH'
 % };
 
-%% Tissue Types and Parameters
-% noise levels. 
-% 50: low noise, 55: okay, relatively low noise, 58: still okay
-% 59: SNR 14, 60: complete mess
-% filter levels
-% 1: does almost nothing, % 2: looks okay
-% 2.5: wrong fits with low CRLBs, but spectrum looks ok
-% 3: completely broken
-MetaInfo.noise_dbs = 25:2:43; % 59:0.25:60; %4e3:4e3:12.2e4;
-MetaInfo.filter_levels = 1:1:10; %1:1:15; %1.5:0.5:2.5;
+%% Parameters
+MetaInfo.noise_dbs = 14.5:0.5:29; 
+MetaInfo.filter_levels = 2.5:0.5:4.5; 
 
-%% CPU Cores
-MetaInfo.CPU_cores = 8; % Does not work here (yet)!
+
 

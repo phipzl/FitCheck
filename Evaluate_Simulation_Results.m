@@ -3,6 +3,7 @@
 
 out_dir =['/ceph/mri.meduniwien.ac.at/departments/radiology/mrsbrain/lab/Process_Results/Tumor_Patients/Meningioma_Paper_2024/FittingSimulationResults'];
 file_prefix = 'My_Simulation';
+% matrix_size_override = [30 6];
 
 %% Extracting matrix_size from file name: 
 % List all .table files in the directory and sort them in descending order
@@ -19,6 +20,10 @@ if ~isempty(tokens)
     matrix_size = [str2double(tokens{1}{1}), str2double(tokens{1}{2}), str2double(tokens{1}{3})];
 else
     error('Could not extract X, Y, Z values from the filename.');
+end
+
+if exist('matrix_size_override','var')
+    matrix_size = matrix_size_override;
 end
 
 mask = ones(matrix_size);     
@@ -216,18 +221,27 @@ end
 % What is the reference? -> noise_db of ~40, filter width of ~300
 % This corresponds to: N = 4, L = 4.
 Nref=1; Lref=1;
-reference_matrix = squeeze(MetData_amp(Nref,Lref,:,:));    % first dim: tissue type. second dim: metabolite.
+% Prepare a matrix of reference values for each tissue type and metabolite.
+% Care: If there is only one tissue type, we would get a Nx1 matrix instead 
+% of a 1x4 matrix, so we need to transpose in that case.
+if size(MetData_amp,3) == 1 
+    reference_matrix=squeeze(MetData_amp(Nref,Lref,:,:))';
+else
+    reference_matrix=squeeze(MetData_amp(Nref,Lref,:,:)); 
+end
+
+% Matrix: Tissue type (TT) x metabolite (Met)
+% Tensor: SNR x LW x TT x Met 
 reference_tensor = repmat(reference_matrix, [1 1 matrix_size(1) matrix_size(2)]);
 reference_tensor = permute(reference_tensor, [3 4 1 2]);            
-% Explanation: 
-% Dim1 and dim2: 
-% 10 noise values and 10 line width values (-> same reference value!)
-% Dim3: 8 tissues types (-> different reference values!)
-% Dim4: 4 metabolites (-> different reference values!)
+
+% Explanation: We use repmat because for the SNR and LW because these
+% should use the same reference values! TT and Mets should have different 
+% reference values!
 
 % Normalize amplitudes
-MetData_norm_amp = (MetData_amp - reference_tensor) ./ reference_tensor;
-MetData_abs_amp = abs(MetData_amp - reference_tensor);
+MetData_RelativeChange = (MetData_amp - reference_tensor) ./ reference_tensor;
+% MetData_abs_amp = abs(MetData_amp - reference_tensor);
 
 
 %% Define most interessting metabolites
@@ -283,32 +297,31 @@ SNR_stats = [min(SNR_flat), mean(SNR_flat), median(SNR_flat), max(SNR_flat), num
 LW_stats = [min(LW_flat), mean(LW_flat), median(LW_flat), max(LW_flat), numel(unique(LW_flat))];
 
 fprintf('');
-fprintf('SNR: Min = %2.2f, Mean = %2.2f, Median = %2.2f, Max = %2.2f, Unique values = %d\n', SNR_stats);
-fprintf('LW:  Min = %2.2f, Mean = %2.2f, Median = %2.2f, Max = %2.2f, Unique values = %d\n', LW_stats);
+fprintf('SNR: Min = %2.3f, Mean = %2.3f, Median = %2.3f, Max = %2.3f, Unique values = %d\n', SNR_stats);
+fprintf('LW:  Min = %2.3f, Mean = %2.3f, Median = %2.3f, Max = %2.3f, Unique values = %d\n', LW_stats);
 
 % Loop through each metabolite for plotting
+n=0;     
+figure('Name','Metabolic Fit vs SNR and LW', ...
+    'units','normalized','outerposition',[0 0 1 1])
 for metabolite_idx = met_indices 
-    % Extract the relevant 2D slice of MetData_amp for the selected tissue and metabolite
-    data_slice = MetData_norm_amp(:,:,tissue_idx,metabolite_idx);
+    n=n+1;
     
-    % Flatten data for plotting
+    % Extract the relevant 2D slice of MetData_amp for the selected tissue and metabolite
+    data_slice = MetData_RelativeChange(:,:,tissue_idx,metabolite_idx);
     data_flat = data_slice(:);
     
     % Create a scatter plot with color-coded MetData_amp values
-    figure;
+    subplot(2,2,n);
     scatter(LW_flat, SNR_flat, 60, data_flat, 'filled'); % 60 is the point size
     
-    % Color bar to represent the value scale
     colorbar;
     caxis([min(data_flat), max(data_flat)]);
     colormap(jet);
-    
-    % Axis labels and title
+    clim([-1 1]);  % Colorbar limits
     xlabel('Line Width (LW)');
     ylabel('Signal-to-Noise Ratio (SNR)');
     title(sprintf('Stability of Metabolic Fit for %s', MetData_amp_title{metabolite_idx}));
-    
-    % Enhance plot appearance
     grid on;
     set(gca, 'FontSize', 12);
 
