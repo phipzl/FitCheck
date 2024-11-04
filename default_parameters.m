@@ -75,8 +75,8 @@ Metabolite.coefficient_structure = cell2struct(num2cell(Metabolite.coefficients)
 % Variable Levels
 Metabolite.variable_mets = {'Gln','Gly'};  % Metabolites to vary
 Metabolite.variable_met_levels = {
-    [2.5 2.75];
-    [3.5 3.85]
+    [2.5 3.5 4.5];
+    [3.5 4.5 5.5]
 };
 
 % % Variable Levels
@@ -87,8 +87,8 @@ Metabolite.variable_met_levels = {
 % };
 
 %% Parameters
-MetaInfo.noise_dbs = 14.5:0.5:29; 
-MetaInfo.filter_levels = 2.5:0.5:4.5; 
+MetaInfo.noise_dbs = 15:1:30; 
+MetaInfo.filter_levels = 3.5:0.5:4.5; 
 
 
 

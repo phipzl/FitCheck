@@ -327,6 +327,9 @@ for metabolite_idx = met_indices
 
 end
 
+set(gcf, 'Position', get(0, 'Screensize'));
+
+
 %% Write Met Data to Files
 
 % fprintf('Write to files...\n');
