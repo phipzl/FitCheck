@@ -49,22 +49,31 @@ Metabolite.files = {
 %% Metabolic Composition
 % Initialize default levels
 Metabolite.coefficients_WM = [... 
-    25.1, 8.3, ... % NAA+NAAG
+    25.1,  8.3, ... % NAA+NAAG
     0.0,  16.5, ... % Cr+PCr
-    5.7,  0.0, ... % GPC+PCh
-    14.2, 2.5, ... % Glu, Gln
+    5.7,   0.0, ... % GPC+PCh
+    14.2,  2.5, ... % Glu, Gln
     3.5,  19.9, ... % Gly, Ins
-    3.3,  0, ... % GSH, Ala
-    5.0, 3.6, 0]; % Tau, Ser, Cys
+    3.3,   0.0, ... % GSH, Ala
+    5.0,   3.6, 0]; % Tau, Ser, Cys
 
 Metabolite.coefficients_GM = [... 
     29.3, 4.8, ... % NAA+NAAG
-    0, 19.2, ... % Cr+PCr
-    5.2, 0, ... % GPC+PCh
+    0,   19.2, ... % Cr+PCr
+    5.2,  0.0, ... % GPC+PCh
     27.7, 4.5, ... % Glu, Gln
     2.6, 19.7, ... % Gly, Ins
-    1.7, 0, ... % GSH, Ala
-    5.2, 2.8, 0]; % Tau, Ser, Cys
+    1.7,  0.0, ... % GSH, Ala
+    5.2,  2.8, 0]; % Tau, Ser, Cys
+
+Metabolite.coefficients_Tumor = [...
+    20.0, 5.0, ...  % NAA+NAAG (often reduced in tumors)
+    0.0, 18.0, ...  % Cr+PCr (can vary but may stay around GM/WM levels)
+    12.0, 0.0, ...  % GPC+PCh (typically elevated in tumors)
+    20.0, 5.0, ...  % Glu, Gln (glutamate may be elevated, glutamine varies)
+    2.0, 15.0, ...  % Gly, Ins (myo-inositol often reduced; glycine can vary)
+    4.0,  0.0, ...   % GSH, Ala (GSH may slightly increase; Ala varies)
+    6.0,  3.0, 0.0]; % Tau, Ser, Cys (some variability; tailored as needed)
 
 
 Metabolite.coefficients = Metabolite.coefficients_WM;
@@ -73,10 +82,10 @@ Metabolite.coefficients = Metabolite.coefficients_WM;
 Metabolite.coefficient_structure = cell2struct(num2cell(Metabolite.coefficients), Metabolite.names, 2);
 
 % Variable Levels
-Metabolite.variable_mets = {'Gln','Gly'};  % Metabolites to vary
+Metabolite.variable_mets = {'Glu', 'Gln'};  % Metabolites to vary
 Metabolite.variable_met_levels = {
-    [2.5 3.5 4.5];
-    [3.5 4.5 5.5]
+    [14.2  14.2*1.25  14.2*1.5];
+    [ 2.5   2.5*1.25   2.5*1.5];
 };
 
 % % Variable Levels
@@ -87,8 +96,8 @@ Metabolite.variable_met_levels = {
 % };
 
 %% Parameters
-MetaInfo.noise_dbs = 15:1:30; 
-MetaInfo.filter_levels = 3.5:0.5:4.5; 
-
+MetaInfo.noise_dbs = 14:1:30; 
+MetaInfo.filter_levels = 3.0:0.5:4.5; 
+MetaInfo.CPU_cores = 40;
 
 

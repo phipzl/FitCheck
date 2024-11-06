@@ -279,7 +279,7 @@ fprintf('Orig length is: \t% 10i \t    \n', Signal.OrigLength);
 fprintf('Truncated to: \t\t% 10i \t    \n', Signal.TruncatedLength);
 fprintf('Downsampled to: \t% 10i \t    \n',  Signal.NewLength);
 fprintf('Zero-filled to: \t% 10i \t    \n', Signal.ZFLength);
-fprintf('##\nInArray.csi dims: % 2i % 2i % 2i % 2i \t   \n##\n', size(InArray.csi));
+fprintf('##\nInArray.csi dims: % 2i % 2i % 2i % 2i \t   \nTotal files: %i\n##\n', size(InArray.csi), size(InArray.csi,1)*size(InArray.csi,2)*size(InArray.csi,3));
 
 
 
