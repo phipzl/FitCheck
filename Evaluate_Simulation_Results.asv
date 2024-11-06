@@ -1,8 +1,9 @@
 % function [MetData_relevant_amp MetData_relevant_sd] = Evaluate_Simulation_Results(out_dir, matrix_size)
 % MetMaps is a 4D array (noise values x line width x tissue type x metabolite)
 
-out_dir =['/ceph/mri.meduniwien.ac.at/departments/radiology/mrsbrain/lab/Process_Results/Tumor_Patients/Meningioma_Paper_2024/FittingSimulationResults/Run_20241106_GluGln_3'];
+out_dir =['/ceph/mri.meduniwien.ac.at/departments/radiology/mrsbrain/lab/Process_Results/Tumor_Patients/Meningioma_Paper_2024/FittingSimulationResults'];
 file_prefix = 'My_Simulation';
+run('default_parameters.m'); % load parameters for ground truth
 % matrix_size_override = [30 6];
 
 %% Extracting matrix_size from file name: 
@@ -217,37 +218,81 @@ end
 %     MetData_abs{met} = squeeze(MetData_abs_amp(:, :, :, met));
 % end
 
-%% Normalize to reference
-% What is the reference? -> noise_db of ~40, filter width of ~300
-% This corresponds to: N = 4, L = 4.
-Nref=1; Lref=1;
-% Prepare a matrix of reference values for each tissue type and metabolite.
-% Care: If there is only one tissue type, we would get a Nx1 matrix instead 
-% of a 1x4 matrix, so we need to transpose in that case.
-if size(MetData_amp,3) == 1 
-    reference_matrix=squeeze(MetData_amp(Nref,Lref,:,:))';
-else
-    reference_matrix=squeeze(MetData_amp(Nref,Lref,:,:)); 
+%% Normalize to reference result (legacy)
+% % What is the reference? -> noise_db of ~40, filter width of ~300
+% % This corresponds to: N = 4, L = 4.
+% Nref=1; Lref=1;
+% % Prepare a matrix of reference values for each tissue type and metabolite.
+% % Care: If there is only one tissue type, we would get a Nx1 matrix instead 
+% % of a 1x4 matrix, so we need to transpose in that case.
+% if size(MetData_amp,3) == 1 
+%     reference_matrix=squeeze(MetData_amp(Nref,Lref,:,:))';
+% else
+%     reference_matrix=squeeze(MetData_amp(Nref,Lref,:,:)); 
+% end
+% 
+% % Matrix: Tissue type (TT) x metabolite (Met)
+% % Tensor: SNR x LW x TT x Met 
+% reference_tensor = repmat(reference_matrix, [1 1 matrix_size(1) matrix_size(2)]);
+% reference_tensor = permute(reference_tensor, [3 4 1 2]);            
+% 
+% % Explanation: We use repmat because for the SNR and LW because these
+% % should use the same reference values! TT and Mets should have different 
+% % reference values!
+% 
+% % Normalize amplitudes
+% MetData_RelativeChange = (MetData_amp - reference_tensor) ./ reference_tensor;
+% % MetData_abs_amp = abs(MetData_amp - reference_tensor);
+
+%% Normalize to ground truth
+% Initialize ground_truth_reference based on Metabolite.names
+num_metabolites = length(Metabolite.names);
+num_tissue_types = matrix_size(3);  % Assuming matrix_size is already defined
+ground_truth_reference = zeros(num_tissue_types, num_metabolites);
+
+% Populate the ground_truth_reference matrix
+for tt = 1:num_tissue_types
+    for met_idx = 1:num_metabolites
+        % Start with baseline coefficient
+        coefficient = Metabolite.coefficients(met_idx);
+        
+        % Check if this metabolite is in the variable_met list
+        is_variable = ismember(Metabolite.names{met_idx}, Metabolite.variable_mets);
+        
+        % If variable, apply the corresponding level adjustment
+        if is_variable
+            % Find the index of the variable metabolite
+            var_idx = find(strcmp(Metabolite.names{met_idx}, Metabolite.variable_mets), 1);
+            if ~isempty(var_idx)
+                % Adjust coefficient based on the variable_met_levels
+                coefficient = coefficient * Metabolite.variable_met_levels(var_idx, tt);
+            end
+        end
+        
+        % Store in ground_truth_reference matrix
+        ground_truth_reference(tt, met_idx) = coefficient;
+    end
 end
 
-% Matrix: Tissue type (TT) x metabolite (Met)
-% Tensor: SNR x LW x TT x Met 
-reference_tensor = repmat(reference_matrix, [1 1 matrix_size(1) matrix_size(2)]);
-reference_tensor = permute(reference_tensor, [3 4 1 2]);            
+% Create the reference tensor by repeating ground_truth_reference across matrix dimensions
+reference_tensor = repmat(ground_truth_reference, [1, 1, matrix_size(1), matrix_size(2)]);
+reference_tensor = permute(reference_tensor, [3, 4, 1, 2]);  % Adjust dimensions as needed
 
-% Explanation: We use repmat because for the SNR and LW because these
-% should use the same reference values! TT and Mets should have different 
-% reference values!
 
-% Normalize amplitudes
+Matrix_TT_Met = 
+% Create a reference tensor for all metabolites
+% Dimensions: [SNR x LW x TissueType x Metabolite]
+reference_tensor = repmat(ground_truth_reference, [matrix_size(1), matrix_size(2), matrix_size(3), 1]); 
+reference_tensor = permute(reference_tensor, [1, 2, 3, 4]);  % Adjust dimensions to align with MetData_amp
+
+% Normalize MetData_amp relative to the ground truth reference values
 MetData_RelativeChange = (MetData_amp - reference_tensor) ./ reference_tensor;
-% MetData_abs_amp = abs(MetData_amp - reference_tensor);
 
 
 %% Define most interessting metabolites
 
-metabolites_ofinterest = ["Glu", "Gln", "Gly", "Ins"];
-[~, met_indices] = ismember(metabolites_ofinterest, string(MetData_amp_title));
+target_metabolites = ["Glu", "Gln"]; %, "Gly", "Ins"];
+[~, met_indices] = ismember(target_metabolites, string(MetData_amp_title));
 
 if any(met_indices == 0)
     error('Some target metabolites were not found in MetData_amp_title.');
@@ -256,7 +301,7 @@ end
 
 
 %% Extract SNR and line width (LW) values for each tissue type
-LW = squeeze(MetData_extra(:, :, :, 1));
+LW  = squeeze(MetData_extra(:, :, :, 1));
 SNR = squeeze(MetData_extra(:, :, :, 2));
 
 %% Check: Comparing Cases. Mets: Glu (r), Gln (g), Ins (b), Gly (c). 
@@ -286,15 +331,15 @@ tissue_idx = 1;
 
 % Extract the corresponding SNR and LW values from MetData_extra
 SNR_vals = MetData_extra(:,:,tissue_idx, 2);  % 3D tensor for SNR
-LW_vals = MetData_extra(:,:,tissue_idx, 1);   % 3D tensor for LW (FWHM)
+LW_vals  = MetData_extra(:,:,tissue_idx, 1);   % 3D tensor for LW (FWHM)
 
 % Flatten SNR and LW values
 SNR_flat = SNR_vals(:);
-LW_flat = LW_vals(:);
+LW_flat  = LW_vals(:);
 
 % Calculate and display SNR and LW statistics (independent of metabolite)
 SNR_stats = [min(SNR_flat), mean(SNR_flat), median(SNR_flat), max(SNR_flat), numel(unique(SNR_flat))];
-LW_stats = [min(LW_flat), mean(LW_flat), median(LW_flat), max(LW_flat), numel(unique(LW_flat))];
+LW_stats  = [min(LW_flat), mean(LW_flat), median(LW_flat), max(LW_flat), numel(unique(LW_flat))];
 
 fprintf('');
 fprintf('SNR: Min = %2.3f, Mean = %2.3f, Median = %2.3f, Max = %2.3f, Unique values = %d\n', SNR_stats);
@@ -312,19 +357,15 @@ for metabolite_idx = met_indices
     data_flat = data_slice(:);
     
     % Create a scatter plot with color-coded MetData_amp values
-    % subplot(2,2,n);
-    figure;
-    scatter(SNR_flat, LW_flat, 60, data_flat, 'filled'); % 60 is the point size
+    subplot(2,2,n);
+    scatter(LW_flat, SNR_flat, 60, data_flat, 'filled'); % 60 is the point size
     
     colorbar;
     caxis([min(data_flat), max(data_flat)]);
     colormap(jet);
     clim([-1 1]);  % Colorbar limits
-    ylabel('Line Width (LW) [ppm]');
-    xlabel('Signal-to-Noise Ratio (SNR)');
-    xlim([0 40]);
-    set(gca, 'XDir', 'reverse');
-
+    xlabel('Line Width (LW)');
+    ylabel('Signal-to-Noise Ratio (SNR)');
     title(sprintf('Stability of Metabolic Fit for %s', MetData_amp_title{metabolite_idx}));
     grid on;
     set(gca, 'FontSize', 12);
@@ -347,29 +388,4 @@ set(gcf, 'Position', get(0, 'Screensize'));
 %     fwrite(fid,MetData_amp(:,:,:,met),'float');
 %     fclose(fid);
 % end
-
-%% Raw To Minc (CURRENTLY BUGGED!)
-
-% % Define the evaluation folder and retrieve list of .raw files
-% evaluation_folder = fullfile(out_dir, 'evaluation');
-% raw_files = dir(fullfile(evaluation_folder, '*.raw'));
-% 
-% % Extract dimensions dynamically from matrix_size
-% dimensions_str = sprintf('%d ', matrix_size);
-% dimensions_str = strtrim(dimensions_str);  % Remove any trailing space
-% 
-% % Loop through each .raw file and convert to .mnc
-% for i = 1:length(raw_files)
-%     raw_filename = fullfile(evaluation_folder, raw_files(i).name);
-%     output_filename = fullfile(evaluation_folder, [raw_files(i).name(1:end-4), '.mnc']);
-% 
-%     % Build and execute the rawtominc command
-%     command = sprintf('rawtominc -clobber -transverse -input "%s" "%s" %s', raw_filename, output_filename, dimensions_str);
-%     system(command);
-% end
-% 
-% fprintf('Done.\n');
-% 
-% 
-% %end
 
