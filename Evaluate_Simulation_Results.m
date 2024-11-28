@@ -312,8 +312,7 @@ for metabolite_idx = met_indices
     data_flat = data_slice(:);
     
     % Create a scatter plot with color-coded MetData_amp values
-    % subplot(2,2,n);
-    figure;
+    subplot(2,2,n);
     scatter(SNR_flat, LW_flat, 60, data_flat, 'filled'); % 60 is the point size
     
     colorbar;
@@ -331,7 +330,7 @@ for metabolite_idx = met_indices
 
 end
 
-set(gcf, 'Position', get(0, 'Screensize'));
+% set(gcf, 'Position', get(0, 'Screensize'));
 
 
 %% Write Met Data to Files
