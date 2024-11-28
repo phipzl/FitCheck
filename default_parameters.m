@@ -67,11 +67,11 @@ Metabolite.coefficients_GM = [...
     5.2,  2.8, 0]; % Tau, Ser, Cys
 
 Metabolite.coefficients_Tumor = [...
-    20.0, 5.0, ...  % NAA+NAAG (often reduced in tumors)
-    0.0, 18.0, ...  % Cr+PCr (can vary but may stay around GM/WM levels)
-    12.0, 0.0, ...  % GPC+PCh (typically elevated in tumors)
-    20.0, 5.0, ...  % Glu, Gln (glutamate may be elevated, glutamine varies)
-    2.0, 15.0, ...  % Gly, Ins (myo-inositol often reduced; glycine can vary)
+    20.0, 5.0, ...   % NAA+NAAG (often reduced in tumors)
+    0.0, 18.0, ...   % Cr+PCr (can vary but may stay around GM/WM levels)
+    12.0, 0.0, ...   % GPC+PCh (typically elevated in tumors)
+    20.0, 5.0, ...   % Glu, Gln (both may be elevated)
+    3.0, 15.0, ...   % Gly, Ins (inositol can vary; glycine often increases)
     4.0,  0.0, ...   % GSH, Ala (GSH may slightly increase; Ala varies)
     6.0,  3.0, 0.0]; % Tau, Ser, Cys (some variability; tailored as needed)
 
@@ -82,22 +82,17 @@ Metabolite.coefficients = Metabolite.coefficients_WM;
 Metabolite.coefficient_structure = cell2struct(num2cell(Metabolite.coefficients), Metabolite.names, 2);
 
 % Variable Levels
-Metabolite.variable_mets = {'Glu', 'Gln'};  % Metabolites to vary
+Metabolite.variable_mets = {'Glu', 'Gln', 'Gly', 'Ins'};  % Metabolites to vary
 Metabolite.variable_met_levels = {
-    [14.2];% 14.2*1.25  14.2*1.5];
-    [ 2.5];%  2.5*1.25   2.5*1.5];
+    [14.2 14.2*1.5  14.2*2.0];
+    [ 2.5  2.5*1.5   2.5*2.0];
+    [ 3.0  3.0*1.5   3.0*2.0];
+    [15.0 15.0*1.5  15.0*2.0];
 };
-
-% % Variable Levels
-% Metabolite.variable_mets = {'Ala', 'GSH'};  % Metabolites to vary
-% Metabolite.variable_met_levels = {
-%     [0, 10];  % Levels for 'Ala'
-%     [0, 10];  % Levels for 'GSH'
-% };
 
 %% Parameters
 MetaInfo.noise_dbs = [0.001 1:13 14:0.5:30]; 
 MetaInfo.filter_levels = [0.001 0.5:0.5:5.0]; 
-MetaInfo.CPU_cores = 40;
+MetaInfo.CPU_cores = 80;
 
 

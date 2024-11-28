@@ -118,8 +118,6 @@ end
 dispstat(sprintf('Tissue scaling factors set.'),'keepthis','timestamp');
 
 %% 5. Calculate parameters and preallocate InArray.csi
-dispstat(sprintf('Creating CSI array.'),'keepthis','timestamp');
-
 % Initialize data structure for storing results
 Simulation.num_noise_levels = length(MetaInfo.noise_dbs);  
 Simulation.num_filter_widths = length(MetaInfo.filter_levels);  
@@ -168,7 +166,9 @@ fprintf(fileid, '--------------------------------\n');
 fprintf(fileid, '\n');
 
 %% 6. Model signals
-
+dispstat(sprintf('Creating CSI array with size [%d x %d x %d x %d].', ...
+    Simulation.num_noise_levels, Simulation.num_filter_widths, length(Simulation.tissue_comps), Signal.ZFLength), ...
+    'keepthis', 'timestamp');
 % Pick a tissue composition
 for i_tissue = 1:length(Simulation.tissue_comps)
     Simulation.tissue_comp = Simulation.tissue_comps{i_tissue};
@@ -221,7 +221,7 @@ for i_tissue = 1:length(Simulation.tissue_comps)
 %             fprintf('Noise dB: % 2i. Filter width: % 3i. Tissue: %s.\n', noise_db, filter_width, Simulation.tissue_comp);
 
             dispstat(sprintf('Voxel: [%2i %2i %2i], Noise db: % 2.3e, Filter width: % 3.3e, Tissue: %s', ...
-            i_noise, filter_index, i_tissue, noise_db, filter_width, Simulation.tissue_comp), 'keepthis');
+            i_noise, filter_index, i_tissue, noise_db, filter_width, Simulation.tissue_comp));
 
             % Write the same info to a file
             fprintf(fileid, 'Voxel: [%2i %2i %2i], Noise db: % 2.3e, Filter width: % 3.3e, Tissue: %s\n', ...
