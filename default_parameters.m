@@ -93,6 +93,6 @@ Metabolite.variable_met_levels = {
 %% Parameters
 MetaInfo.noise_dbs = [0.001 1:13 14:0.5:30]; 
 MetaInfo.filter_levels = [0.001 0.5:0.5:5.0]; 
-MetaInfo.CPU_cores = 80;
+MetaInfo.CPU_cores = 40;
 
 

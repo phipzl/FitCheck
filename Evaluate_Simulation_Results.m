@@ -1,30 +1,35 @@
 % function [MetData_relevant_amp MetData_relevant_sd] = Evaluate_Simulation_Results(out_dir, matrix_size)
 % MetMaps is a 4D array (noise values x line width x tissue type x metabolite)
 
-out_dir =['/ceph/mri.meduniwien.ac.at/departments/radiology/mrsbrain/lab/Process_Results/Tumor_Patients/Meningioma_Paper_2024/FittingSimulationResults/Run_20241106_GluGln_3'];
+root_dir='/ceph/mri.meduniwien.ac.at/departments/radiology/mrsbrain/lab/Process_Results/Tumor_Patients/Meningioma_Paper_2024/FittingSimulationResults';
+run_name = 'Run_20241128_GluGlnGlyIns';
+out_dir  = [root_dir '/' run_name];
+figure_dir = [root_dir '/' run_name '_Figures'];
 file_prefix = 'My_Simulation';
 % matrix_size_override = [30 6];
-
+dispstat(sprintf('Running FitCheck evaluation'),'keepthis','timestamp');
 %% Extracting matrix_size from file name: 
 % List all .table files in the directory and sort them in descending order
-table_files = dir(fullfile(out_dir, '*.table'));
-
-[~, idx] = sort({table_files.name});  % Sort in ascending order
-sorted_files = table_files(flip(idx));  % Flip to get descending order
-
-% Extract numbers from the first (largest) filename
-file_name = sorted_files(1).name;
-tokens = regexp(file_name, 'X(\d+)_Y(\d+)_Z(\d+)', 'tokens');
-
-if ~isempty(tokens)
-    matrix_size = [str2double(tokens{1}{1}), str2double(tokens{1}{2}), str2double(tokens{1}{3})];
-else
-    error('Could not extract X, Y, Z values from the filename.');
-end
-
+dispstat(sprintf('Getting matrix size...'),timestamp');
 if exist('matrix_size_override','var')
     matrix_size = matrix_size_override;
+else
+    table_files = dir(fullfile(out_dir, '*.table'));
+    
+    [~, idx] = sort({table_files.name});  % Sort in ascending order
+    sorted_files = table_files(flip(idx));  % Flip to get descending order
+    
+    % Extract numbers from the first (largest) filename
+    file_name = sorted_files(1).name;
+    tokens = regexp(file_name, 'X(\d+)_Y(\d+)_Z(\d+)', 'tokens');
+    
+    if ~isempty(tokens)
+        matrix_size = [str2double(tokens{1}{1}), str2double(tokens{1}{2}), str2double(tokens{1}{3})];
+    else
+        error('Could not extract X, Y, Z values from the filename.');
+    end
 end
+dispstat(sprintf('Matrix size loaded.'),'keepthis','timestamp');
 
 mask = ones(matrix_size);     
 
@@ -36,12 +41,11 @@ table_list = struct2cell(dir(sprintf('%s/*.table',out_dir)));           % dir(fo
 table_list = table_list(1,:);                                                   % only the first entry (the former .name, that is now the first row) is of interest.
 cd(sprintf('%s',cur_dir));                                                      % go back to cur_dir directory
 
-    
-
 %% MetData_amp_title etc.
 no_met = 0;
 MetData_amp_title = {};
 table_list_index = 0;
+dispstat(sprintf('Getting info from a table file...'),'timestamp');
 while(no_met == 0)          % if metabolites are found --> stop, otherwise open next table file
 
     table_list_index = table_list_index + 1;
@@ -54,15 +58,7 @@ while(no_met == 0)          % if metabolites are found --> stop, otherwise open 
       	if(strfind(tline, '$$CONC'))
             met_str = regexp(tline,' ','split');
             met_str(cellfun(@isempty,met_str)) = [];
-            no_met = str2double(met_str{2}) - 1;            
-%            if(WaterRefState == 3)	
-%                no_met = str2double(met_str{2}) - 7;
-%            else
-%                no_met = str2double(met_str{2}) - 1;
-%            end
-
-            % read name of each metabolite line by line
-            %%%%%%%%% fixed bug: if LCM gives output like "0.1+Scyllo" then the met_name could not be read out %%%%%%%%%%%%%%%
+            no_met = str2double(met_str{2}) - 1;      
             fgetl(fid_vox);
             for n = 1:no_met
                 tline = fgetl(fid_vox);
@@ -94,12 +90,14 @@ while(no_met == 0)          % if metabolites are found --> stop, otherwise open 
 end
 
 if(no_met == 0)      % if no table with some metabolites was found, quit
-    display([char(10) 'No table with any metabolite inside was found. The PC will explode now. Leave work and drink a tea.' char(10)])   %char(10) = new line
+    display([char(10) 'No table with any metabolite inside was found. Aborting.' char(10)])   %char(10) = new line
     quit force
 end
+dispstat(sprintf('Fitting information loaded.'),'keepthis','timestamp');
             
 MetData_sd_title = MetData_amp_title;
 MetData_extra_title = [ {'FWHM'}; {'SNR'}; {'shift'}; {'0_pha'}; {'1_pha'}];
+
 %% 5. READ METABOLITE DATA OF ALL TABLES
 
 %preallocate memory for data
@@ -109,7 +107,7 @@ MetData_sd = NaN(size(mask,1),size(mask,2),size(mask,3),numel(MetData_sd_title))
 % MetData_sd_clipped = NaN(size(mask,1),size(mask,2),size(mask,3),numel(MetData_sd_title));
 MetData_extra = NaN(size(mask,1),size(mask,2),size(mask,3),numel(MetData_extra_title));
 
-fprintf('Read data...\n');
+dispstat(sprintf('Loading metabolic fits from table files...'),'timestamp');
 
 %read table files
 voxel_no = 0;
@@ -195,6 +193,7 @@ for T=1:size(mask,3)            % tissue, 'z'
         end
     end
 end
+dispstat(sprintf('Metabolite fitting results loaded.'),'keepthis','timestamp');
 
 
 %solves problem with NaN in cases where
@@ -234,15 +233,10 @@ end
 % Tensor: SNR x LW x TT x Met 
 reference_tensor = repmat(reference_matrix, [1 1 matrix_size(1) matrix_size(2)]);
 reference_tensor = permute(reference_tensor, [3 4 1 2]);            
+% Explanation: We use repmat for the SNR and LW because these should use the same reference values! 
+% Different tissues and metabolites need different reference values!
 
-% Explanation: We use repmat because for the SNR and LW because these
-% should use the same reference values! TT and Mets should have different 
-% reference values!
-
-% Normalize amplitudes
 MetData_RelativeChange = (MetData_amp - reference_tensor) ./ reference_tensor;
-% MetData_abs_amp = abs(MetData_amp - reference_tensor);
-
 
 %% Define most interessting metabolites
 
@@ -280,57 +274,76 @@ SNR = squeeze(MetData_extra(:, :, :, 2));
 
 %% Visualization
 close all
+dispstat(sprintf('Creating plots...'), 'keepthis', 'timestamp');
 
-% Select tissue type for plotting (e.g., z = 1)
-tissue_idx = 1;
+% Loop through tissue types
+for tissue_idx = 1:3 %size(MetData_extra, 3)
+    % Extract the corresponding SNR and LW values from MetData_extra
+    SNR_vals = MetData_extra(:,:,tissue_idx, 2);  % 3D tensor for SNR
+    LW_vals = MetData_extra(:,:,tissue_idx, 1);   % 3D tensor for LW (FWHM)
 
-% Extract the corresponding SNR and LW values from MetData_extra
-SNR_vals = MetData_extra(:,:,tissue_idx, 2);  % 3D tensor for SNR
-LW_vals = MetData_extra(:,:,tissue_idx, 1);   % 3D tensor for LW (FWHM)
+    % Flatten SNR and LW values
+    SNR_flat = SNR_vals(:);
+    LW_flat = LW_vals(:);
 
-% Flatten SNR and LW values
-SNR_flat = SNR_vals(:);
-LW_flat = LW_vals(:);
+    % Calculate and display SNR and LW statistics (independent of metabolite)
+    SNR_stats = [min(SNR_flat), mean(SNR_flat), median(SNR_flat), max(SNR_flat), numel(unique(SNR_flat))];
+    LW_stats = [min(LW_flat), mean(LW_flat), median(LW_flat), max(LW_flat), numel(unique(LW_flat))];
 
-% Calculate and display SNR and LW statistics (independent of metabolite)
-SNR_stats = [min(SNR_flat), mean(SNR_flat), median(SNR_flat), max(SNR_flat), numel(unique(SNR_flat))];
-LW_stats = [min(LW_flat), mean(LW_flat), median(LW_flat), max(LW_flat), numel(unique(LW_flat))];
+    dispstat(sprintf(['Processing tissue type %d/%i...\n' ...
+        'SNR: Min = %2.3f, Mean = %2.3f, Median = %2.3f, Max = %2.3f, Unique values = %d\n' ...
+        'LW:  Min = %2.3f, Mean = %2.3f, Median = %2.3f, Max = %2.3f, Unique values = %d\n'], ...
+        tissue_idx, size(MetData_extra, 3), SNR_stats, LW_stats), 'timestamp');
 
-fprintf('');
-fprintf('SNR: Min = %2.3f, Mean = %2.3f, Median = %2.3f, Max = %2.3f, Unique values = %d\n', SNR_stats);
-fprintf('LW:  Min = %2.3f, Mean = %2.3f, Median = %2.3f, Max = %2.3f, Unique values = %d\n', LW_stats);
+    % Plot for current tissue type
+    n = 0;
+    fig = figure('Name', sprintf('Metabolic Fit vs SNR and LW (Tissue %d)', tissue_idx), ...
+                 'units', 'centimeters', 'position', [1, 1, 40, 30], ...
+                 'visible', 'off');  
+    for metabolite_idx = met_indices
+        n = n + 1;
 
-% Loop through each metabolite for plotting
-n=0;     
-figure('Name','Metabolic Fit vs SNR and LW', ...
-    'units','normalized','outerposition',[0 0 1 1])
-for metabolite_idx = met_indices 
-    n=n+1;
-    
-    % Extract the relevant 2D slice of MetData_amp for the selected tissue and metabolite
-    data_slice = MetData_RelativeChange(:,:,tissue_idx,metabolite_idx);
-    data_flat = data_slice(:);
-    
-    % Create a scatter plot with color-coded MetData_amp values
-    subplot(2,2,n);
-    scatter(SNR_flat, LW_flat, 60, data_flat, 'filled'); % 60 is the point size
-    
-    colorbar;
-    caxis([min(data_flat), max(data_flat)]);
-    colormap(jet);
-    clim([-1 1]);  % Colorbar limits
-    ylabel('Line Width (LW) [ppm]');
-    xlabel('Signal-to-Noise Ratio (SNR)');
-    xlim([0 40]);
-    set(gca, 'XDir', 'reverse');
+        % Extract the relevant 2D slice of MetData_amp for the selected tissue and metabolite
+        data_slice = MetData_RelativeChange(:,:,tissue_idx,metabolite_idx);
+        data_flat = data_slice(:);
 
-    title(sprintf('Stability of Metabolic Fit for %s', MetData_amp_title{metabolite_idx}));
-    grid on;
-    set(gca, 'FontSize', 12);
+        % Create a scatter plot with color-coded MetData_amp values
+        subplot(2, 2, n);
+        point_size = 60;
+        scatter(SNR_flat, LW_flat, point_size, data_flat, 'filled');
+        pbaspect([1.5 1 1]);
+        
+        colorbar;
+        colormap(jet);
+        ax = gca();
+        ax.CLim = [-1 1];  % Colorbar limits
+        
+        xlabel('Signal-to-Noise Ratio (SNR)');
+        ylabel('Line Width (LW) [ppm]');
+        xlim([0 40]);
+        ylim([0 0.20]);
+        set(gca, 'XDir', 'reverse');
 
+        title(sprintf('%s', MetData_amp_title{metabolite_idx}));
+        grid on;
+        set(gca, 'FontSize', 12);
+    end
+    sgtitle('Relative Deviations of the Metabolite Fits', 'FontWeight', 'bold');
+
+
+    % Save the plot as a .jpg file
+    if ~exist(figure_dir, 'dir')
+        mkdir(figure_dir);  % Create directory if it doesn't exist
+    end
+    filename = sprintf('Tissue_%03d_Metabolic_Fit.jpg', tissue_idx);
+
+    % Save with DPI settings
+    exportgraphics(fig, fullfile(figure_dir, filename), 'Resolution', 200);
+    close(fig);
 end
+dispstat(sprintf('Plots created.'), 'keepthis', 'timestamp');
 
-% set(gcf, 'Position', get(0, 'Screensize'));
+
 
 
 %% Write Met Data to Files
