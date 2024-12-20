@@ -272,12 +272,16 @@ SNR = squeeze(MetData_extra(:, :, :, 2));
 % hold off;
 
 
-%% Visualization
-close all
-dispstat(sprintf('Creating plots...'), 'keepthis', 'timestamp');
+%% Visualization with parfor
+close all;
+dispstat(sprintf('Creating plots in parallel...'), 'keepthis', 'timestamp');
 
-% Loop through tissue types
-for tissue_idx = 1:3 %size(MetData_extra, 3)
+% Predefine the number of tissue types to process
+num_tissue_types = 81; % Adjust as needed
+progress = cell(num_tissue_types, 1); % Store progress messages for each iteration
+
+% Parallel loop over tissue types
+parfor tissue_idx = 1:num_tissue_types
     % Extract the corresponding SNR and LW values from MetData_extra
     SNR_vals = MetData_extra(:,:,tissue_idx, 2);  % 3D tensor for SNR
     LW_vals = MetData_extra(:,:,tissue_idx, 1);   % 3D tensor for LW (FWHM)
@@ -286,14 +290,15 @@ for tissue_idx = 1:3 %size(MetData_extra, 3)
     SNR_flat = SNR_vals(:);
     LW_flat = LW_vals(:);
 
-    % Calculate and display SNR and LW statistics (independent of metabolite)
+    % Calculate and store SNR and LW statistics
     SNR_stats = [min(SNR_flat), mean(SNR_flat), median(SNR_flat), max(SNR_flat), numel(unique(SNR_flat))];
     LW_stats = [min(LW_flat), mean(LW_flat), median(LW_flat), max(LW_flat), numel(unique(LW_flat))];
 
-    dispstat(sprintf(['Processing tissue type %d/%i...\n' ...
+    % Store progress message
+    progress{tissue_idx} = sprintf(['Processing tissue type %d/%i...\n' ...
         'SNR: Min = %2.3f, Mean = %2.3f, Median = %2.3f, Max = %2.3f, Unique values = %d\n' ...
         'LW:  Min = %2.3f, Mean = %2.3f, Median = %2.3f, Max = %2.3f, Unique values = %d\n'], ...
-        tissue_idx, size(MetData_extra, 3), SNR_stats, LW_stats), 'timestamp');
+        tissue_idx, num_tissue_types, SNR_stats, LW_stats);
 
     % Plot for current tissue type
     n = 0;
@@ -330,7 +335,6 @@ for tissue_idx = 1:3 %size(MetData_extra, 3)
     end
     sgtitle('Relative Deviations of the Metabolite Fits', 'FontWeight', 'bold');
 
-
     % Save the plot as a .jpg file
     if ~exist(figure_dir, 'dir')
         mkdir(figure_dir);  % Create directory if it doesn't exist
@@ -341,8 +345,10 @@ for tissue_idx = 1:3 %size(MetData_extra, 3)
     exportgraphics(fig, fullfile(figure_dir, filename), 'Resolution', 200);
     close(fig);
 end
-dispstat(sprintf('Plots created.'), 'keepthis', 'timestamp');
 
+% Display progress messages
+dispstat('Parallel processing complete.', 'keepthis', 'timestamp');
+cellfun(@(msg) dispstat(msg, 'timestamp'), progress);
 
 
 
